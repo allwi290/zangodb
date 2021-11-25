@@ -1,14 +1,18 @@
-const memoize = require('memoizee');
-
-const { unknownOp, hashify } = require('./util.js'),
-      build = require('./lang/expression.js'),
-      Fields = require('./lang/fields.js');
-
+import memoize from 'memoizee';
+import { unknownOp, hashify } from './util.js';
+import build from './lang/expression.js';
+import { Fields } from './lang/fields.js';
 class Operator {
-    get value() { return this._value; }
+    get value() {
+        return this._value;
+    }
 
-    static getNoRefsSteps(steps) { return steps.in_iter; }
-    static getOpValue(expr, cb) { cb(expr.ast.run()); }
+    static getNoRefsSteps(steps) {
+        return steps.in_iter;
+    }
+    static getOpValue(expr, cb) {
+        cb(expr.ast.run());
+    }
 
     getOpValueWithRefs(expr, doc, cb) {
         const { ast, fields } = expr;
@@ -25,11 +29,13 @@ class Sum extends Operator {
     }
 
     static _verify(value, cb) {
-        if (typeof value === 'number') { cb(value); }
+        if (typeof value === 'number') {
+            cb(value);
+        }
     }
 
     static getOpValue(expr, cb) {
-        super.getOpValue(expr, value => Sum._verify(value, cb));
+        super.getOpValue(expr, (value) => Sum._verify(value, cb));
     }
 
     getOpValueWithRefs(expr, doc, cb) {
@@ -38,7 +44,9 @@ class Sum extends Operator {
         });
     }
 
-    add(value) { this._value += value; }
+    add(value) {
+        this._value += value;
+    }
 }
 
 class Avg extends Sum {
@@ -54,7 +62,9 @@ class Avg extends Sum {
         super.add(value);
     }
 
-    get value() { return this._value / this._count || 0; }
+    get value() {
+        return this._value / this._count || 0;
+    }
 }
 
 class Compare extends Operator {
@@ -66,7 +76,9 @@ class Compare extends Operator {
         this._add = this._add1;
     }
 
-    static getNoRefsSteps(steps) { return steps.in_end; }
+    static getNoRefsSteps(steps) {
+        return steps.in_end;
+    }
 
     _add1(value) {
         this._value = value;
@@ -80,16 +92,22 @@ class Compare extends Operator {
     }
 
     add(value) {
-        if (value != null) { this._add(value); }
+        if (value != null) {
+            this._add(value);
+        }
     }
 }
 
 class Min extends Compare {
-    constructor() { super((a, b) => a < b); }
+    constructor() {
+        super((a, b) => a < b);
+    }
 }
 
 class Max extends Compare {
-    constructor() { super((a, b) => a > b); }
+    constructor() {
+        super((a, b) => a > b);
+    }
 }
 
 class Push extends Operator {
@@ -99,7 +117,9 @@ class Push extends Operator {
         this._value = [];
     }
 
-    add(value) { this._value.push(value); }
+    add(value) {
+        this._value.push(value);
+    }
 }
 
 class AddToSet extends Operator {
@@ -109,9 +129,13 @@ class AddToSet extends Operator {
         this._hashes = {};
     }
 
-    static getNoRefsSteps(steps) { return steps.in_end; }
+    static getNoRefsSteps(steps) {
+        return steps.in_end;
+    }
 
-    add(value) { this._hashes[hashify(value)] = value; }
+    add(value) {
+        this._hashes[hashify(value)] = value;
+    }
 
     get value() {
         const docs = [];
@@ -125,7 +149,9 @@ class AddToSet extends Operator {
 }
 
 const runSteps = (steps, ...args) => {
-    for (let fn of steps) { fn(...args); }
+    for (let fn of steps) {
+        fn(...args);
+    }
 };
 
 const runInEnd = (in_end, groups) => {
@@ -136,14 +162,18 @@ const runInEnd = (in_end, groups) => {
 
 const groupLoopFn = (next, in_end, groups, fn) => (cb) => {
     const done = (error) => {
-        if (!error) { runInEnd(in_end, groups); }
+        if (!error) {
+            runInEnd(in_end, groups);
+        }
 
         cb(error, groups);
     };
 
     (function iterate() {
         next((error, doc) => {
-            if (!doc) { return done(error); }
+            if (!doc) {
+                return done(error);
+            }
 
             fn(doc);
             iterate();
@@ -155,17 +185,20 @@ const createGroupByRefFn = (next, expr, steps) => {
     const { in_start, in_iter, in_end } = steps;
     const groups = [];
 
-    const add = memoize((_id_hash, _id) => {
-        const group_doc = { _id };
+    const add = memoize(
+        (_id_hash, _id) => {
+            const group_doc = { _id };
 
-        groups.push(group_doc);
-        runSteps(in_start, group_doc);
+            groups.push(group_doc);
+            runSteps(in_start, group_doc);
 
-        return group_doc;
-    }, { length: 1 });
+            return group_doc;
+        },
+        { length: 1 }
+    );
 
     const { ast } = expr;
-    const _idFn = doc => ast.run(new Fields(doc));
+    const _idFn = (doc) => ast.run(new Fields(doc));
 
     let onDoc;
 
@@ -231,7 +264,7 @@ const ops = {
     $min: Min,
     $max: Max,
     $push: Push,
-    $addToSet: AddToSet
+    $addToSet: AddToSet,
 };
 
 const _build = (steps, field, value) => {
@@ -239,13 +272,16 @@ const _build = (steps, field, value) => {
     const op_strs = Object.keys(value);
 
     if (op_strs.length > 1) {
-        throw Error(`fields must have only one operator`);
+        throw Error('fields must have only one operator');
     }
 
-    const op_str = op_strs[0], Op = ops[op_str];
+    const op_str = op_strs[0],
+        Op = ops[op_str];
 
     if (!Op) {
-        if (op_str[0] === '$') { unknownOp(op_str); }
+        if (op_str[0] === '$') {
+            unknownOp(op_str);
+        }
 
         throw Error(`unexpected field '${op_str}'`);
     }
@@ -259,11 +295,13 @@ const _build = (steps, field, value) => {
     if (expr.has_refs) {
         in_iter.push((group_doc, doc) => {
             const fields = new Fields(doc);
-            if (!fields.ensure(expr.paths)) { return; }
+            if (!fields.ensure(expr.paths)) {
+                return;
+            }
 
             const op = group_doc[field],
-                  _expr = Object.assign({ fields }, expr),
-                  add = value => op.add(value);
+                _expr = Object.assign({ fields }, expr),
+                add = (value) => op.add(value);
 
             op.getOpValueWithRefs(_expr, doc, add);
         });
@@ -280,9 +318,9 @@ const _build = (steps, field, value) => {
     });
 };
 
-module.exports = (_next, spec) => {
-    if (!spec.hasOwnProperty('_id')) {
-        throw Error("the '_id' field is missing");
+export default (_next, spec) => {
+    if (!Object.prototype.hasOwnProperty.call(spec, '_id')) {
+        throw Error('the "_id" field is missing');
     }
 
     const expr = build(spec._id);
@@ -293,7 +331,7 @@ module.exports = (_next, spec) => {
     const steps = {
         in_start: [],
         in_iter: [],
-        in_end: []
+        in_end: [],
     };
 
     for (let field in new_spec) {
@@ -304,10 +342,13 @@ module.exports = (_next, spec) => {
 
     let next = (cb) => {
         group((error, groups) => {
-            if (error) { cb(error); }
-            else { (next = cb => cb(null, groups.pop()))(cb); }
+            if (error) {
+                cb(error);
+            } else {
+                (next = (cb) => cb(null, groups.pop()))(cb);
+            }
         });
     };
 
-    return cb => next(cb);
+    return (cb) => next(cb);
 };

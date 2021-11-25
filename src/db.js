@@ -1,9 +1,8 @@
-const EventEmitter = require('events'),
-      memoize = require('memoizee'),
-      Q = require('q');
-
-const { getIDBError } = require('./util.js');
-const Collection = require('./collection.js');
+import EventEmitter from 'events';
+import memoize from 'memoizee';
+import Q from 'q';
+import { getIDBError } from './util.js';
+import { Collection } from './collection.js';
 
 /**
  * Db blocked event.
@@ -46,14 +45,17 @@ const Collection = require('./collection.js');
  * // Define collections without indexes.
  * let db = new zango.Db('mydb', ['col1', 'col2']);
  */
-class Db extends EventEmitter {
+export class Db extends EventEmitter {
     constructor(name, version, config) {
         super();
 
         this._name = name;
 
-        if (typeof version === 'object') { config = version; }
-        else { this._version = version; }
+        if (typeof version === 'object') {
+            config = version;
+        } else {
+            this._version = version;
+        }
 
         this._cols = {};
         this._config = {};
@@ -76,13 +78,17 @@ class Db extends EventEmitter {
      * The name of the database.
      * @type {string}
      */
-    get name() { return this._name; }
+    get name() {
+        return this._name;
+    }
 
     /**
      * The version of the database.
      * @type {number}
      */
-    get version() { return this._version; }
+    get version() {
+        return this._version;
+    }
 
     _addCollection(name) {
         this._cols[name] = new Collection(this, name);
@@ -91,10 +97,12 @@ class Db extends EventEmitter {
     _addIndex(index_config, path) {
         const config = this._config;
 
-        if (!index_config) { return config[path] = false; }
+        if (!index_config) {
+            return (config[path] = false);
+        }
 
         if (typeof index_config !== 'object') {
-            return config[path] = {};
+            return (config[path] = {});
         }
 
         const col = this._cols[path];
@@ -123,7 +131,7 @@ class Db extends EventEmitter {
     _addStore(idb, name) {
         const store = idb.createObjectStore(name, {
             keyPath: '_id',
-            autoIncrement: true
+            autoIncrement: true,
         });
 
         const index_config = this._config[name];
@@ -131,7 +139,9 @@ class Db extends EventEmitter {
         for (let path in index_config) {
             if (index_config[path]) {
                 store.createIndex(path, path, { unique: false });
-            } else { store.deleteIndex(path); }
+            } else {
+                store.deleteIndex(path);
+            }
         }
     }
 
@@ -140,7 +150,9 @@ class Db extends EventEmitter {
 
         if (this._version) {
             req = indexedDB.open(this._name, this._version);
-        } else { req = indexedDB.open(this._name); }
+        } else {
+            req = indexedDB.open(this._name);
+        }
 
         req.onsuccess = (e) => {
             const idb = e.target.result;
@@ -152,7 +164,7 @@ class Db extends EventEmitter {
             cb(null, idb);
         };
 
-        req.onerror = e => cb(getIDBError(e));
+        req.onerror = (e) => cb(getIDBError(e));
 
         req.onupgradeneeded = (e) => {
             const idb = e.target.result;
@@ -164,7 +176,9 @@ class Db extends EventEmitter {
                     } else if (!idb.objectStoreNames.contains(name)) {
                         this._addStore(idb, name);
                     }
-                } catch (error) { return cb(error); }
+                } catch (error) {
+                    return cb(error);
+                }
             }
         };
 
@@ -202,8 +216,11 @@ class Db extends EventEmitter {
         const deferred = Q.defer();
 
         this._getConn((error) => {
-            if (error) { deferred.reject(error); }
-            else { deferred.resolve(this); }
+            if (error) {
+                deferred.reject(error);
+            } else {
+                deferred.resolve(this);
+            }
         });
 
         deferred.promise.nodeify(cb);
@@ -239,12 +256,10 @@ class Db extends EventEmitter {
         const req = indexedDB.deleteDatabase(this._name);
 
         req.onsuccess = () => deferred.resolve();
-        req.onerror = e => deferred.reject(getIDBError(e));
+        req.onerror = (e) => deferred.reject(getIDBError(e));
 
         deferred.promise.nodeify(cb);
 
         return deferred.promise;
     }
 }
-
-module.exports = Db;

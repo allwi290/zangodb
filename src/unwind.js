@@ -1,16 +1,18 @@
-const { toPathPieces, get } = require('./util.js');
+import { toPathPieces, get } from './util.js';
 
-module.exports = (_next, path) => {
+export default (_next, path) => {
     const path_pieces = toPathPieces(path.substring(1)),
-          elements = [],
-          fn = cb => cb(null, elements.pop());
+        elements = [],
+        fn = (cb) => cb(null, elements.pop());
 
     const onDoc = (doc, cb) => {
         const old_length = elements.length;
 
         get(doc, path_pieces, (obj, field) => {
             const new_elements = obj[field];
-            if (!new_elements) { return; }
+            if (!new_elements) {
+                return;
+            }
 
             if (new_elements[Symbol.iterator]) {
                 for (let element of new_elements) {
@@ -28,11 +30,15 @@ module.exports = (_next, path) => {
 
     let next = (cb) => {
         _next((error, doc) => {
-            if (error) { cb(error); }
-            else if (doc) { onDoc(doc, cb); }
-            else { (next = fn)(cb); }
+            if (error) {
+                cb(error);
+            } else if (doc) {
+                onDoc(doc, cb);
+            } else {
+                (next = fn)(cb);
+            }
         });
     };
 
-    return cb => next(cb);
+    return (cb) => next(cb);
 };

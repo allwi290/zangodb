@@ -1,9 +1,8 @@
-const memoize = require('memoizee');
+import memoize from 'memoizee';
+import { get } from '../util.js';
+import MISSING from './missing_symbol.js';
 
-const { get } = require('../util.js');
-const MISSING = require('./missing_symbol.js');
-
-class Fields {
+export class Fields {
     constructor(doc) {
         this._doc = doc;
         this.get = memoize(this.get);
@@ -29,5 +28,3 @@ class Fields {
         return true;
     }
 }
-
-module.exports = Fields;

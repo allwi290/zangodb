@@ -1,11 +1,15 @@
-const { unknownOp } = require('../util.js'),
-      MISSING = require('./missing_symbol.js'),
-      Path = require('./path.js');
+import { unknownOp } from '../util.js';
+import MISSING from './missing_symbol.js';
+import { Path } from './path.js';
 
 class Value {
-    constructor(value) { this.value = value; }
+    constructor(value) {
+        this.value = value;
+    }
 
-    get ResultType() { return this.constructor; }
+    get ResultType() {
+        return this.constructor;
+    }
 
     static any(value) {
         if (typeof value === 'number') {
@@ -31,33 +35,49 @@ class Value {
         return new Literal(Value.any(value));
     }
 
-    run() { return this.value; }
+    run() {
+        return this.value;
+    }
 }
 
 class NumberValue extends Value {
-    static isType(value) { return typeof value === 'number'; }
+    static isType(value) {
+        return typeof value === 'number';
+    }
 }
 
 class StringValue extends Value {
-    static isType(value) { return typeof value === 'string'; }
+    static isType(value) {
+        return typeof value === 'string';
+    }
 }
 
 class ArrayValue extends Value {
-    static isType(value) { return Array.isArray(value); }
+    static isType(value) {
+        return Array.isArray(value);
+    }
 }
 
 class DateValue extends Value {
-    static isType(value) { return value instanceof Date; }
+    static isType(value) {
+        return value instanceof Date;
+    }
 }
 
 class Literal extends Value {
-    get ResultType() { return this.value.ResultType; }
+    get ResultType() {
+        return this.value.ResultType;
+    }
 
-    run() { return this.value.run(); }
+    run() {
+        return this.value.run();
+    }
 }
 
 class Get {
-    constructor(path) { this.path = path; }
+    constructor(path) {
+        this.path = path;
+    }
 
     run(fields) {
         const value = fields.get(this.path);
@@ -68,7 +88,8 @@ class Get {
 
 class ObjectExpr extends Value {
     run(fields) {
-        const result = {}, { value } = this;
+        const result = {},
+            { value } = this;
 
         for (let field in value) {
             result[field] = value[field].run(fields);
@@ -79,11 +100,17 @@ class ObjectExpr extends Value {
 }
 
 class Operator {
-    constructor() { this.args = []; }
+    constructor() {
+        this.args = [];
+    }
 
-    get alt() { return new Value(null); }
+    get alt() {
+        return new Value(null);
+    }
 
-    add(node) { this.args.push(node); }
+    add(node) {
+        this.args.push(node);
+    }
 }
 
 class FnOp extends Operator {
@@ -93,29 +120,37 @@ class FnOp extends Operator {
         this.fn = fn;
     }
 
-    get length() { return Infinity; }
+    get length() {
+        return Infinity;
+    }
 
     run(fields) {
         const { args, fn } = this;
 
-        return args.map(arg => arg.run(fields)).reduce(fn);
+        return args.map((arg) => arg.run(fields)).reduce(fn);
     }
 }
 
 class UnaryFnOp extends FnOp {
-    get length() { return 1; }
+    get length() {
+        return 1;
+    }
 
-    run(fields) { return this.fn(this.args[0].run(fields)); }
+    run(fields) {
+        return this.fn(this.args[0].run(fields));
+    }
 }
 
 const fnOp = (Parent, fn) => {
     return class extends Parent {
-        constructor() { super(fn); }
+        constructor() {
+            super(fn);
+        }
     };
 };
 
 const opTypes = (Parent, InputType, ResultType = InputType) => {
-    const Constructor = class extends Parent { };
+    const Constructor = class extends Parent {};
 
     Constructor.prototype.InputType = InputType;
     Constructor.prototype.ResultType = ResultType;
@@ -123,59 +158,63 @@ const opTypes = (Parent, InputType, ResultType = InputType) => {
     return Constructor;
 };
 
-class ArithOp extends opTypes(FnOp, NumberValue) { }
+class ArithOp extends opTypes(FnOp, NumberValue) {}
 
-const arithOp = fn => fnOp(ArithOp, fn);
+const arithOp = (fn) => fnOp(ArithOp, fn);
 
-class Add extends arithOp((a, b) => a + b) { }
-class Subtract extends arithOp((a, b) => a - b) { }
-class Multiply extends arithOp((a, b) => a * b) { }
-class Divide extends arithOp((a, b) => a / b) { }
-class Mod extends arithOp((a, b) => a % b) { }
+class Add extends arithOp((a, b) => a + b) {}
+class Subtract extends arithOp((a, b) => a - b) {}
+class Multiply extends arithOp((a, b) => a * b) {}
+class Divide extends arithOp((a, b) => a / b) {}
+class Mod extends arithOp((a, b) => a % b) {}
 
 class MathOp extends opTypes(FnOp, NumberValue) {
-    get length() { return this.fn.length; }
+    get length() {
+        return this.fn.length;
+    }
 
     run(fields) {
-        return this.fn(...this.args.map(arg => arg.run(fields)));
+        return this.fn(...this.args.map((arg) => arg.run(fields)));
     }
 }
 
-const mathOp = fn => fnOp(MathOp, fn);
+const mathOp = (fn) => fnOp(MathOp, fn);
 
-class Abs extends mathOp(Math.abs) { }
-class Ceil extends mathOp(Math.ceil) { }
-class Floor extends mathOp(Math.floor) { }
-class Ln extends mathOp(Math.log) { }
-class Log10 extends mathOp(Math.log10) { }
-class Pow extends mathOp(Math.pow) { }
-class Sqrt extends mathOp(Math.sqrt) { }
-class Trunc extends mathOp(Math.trunc) { }
+class Abs extends mathOp(Math.abs) {}
+class Ceil extends mathOp(Math.ceil) {}
+class Floor extends mathOp(Math.floor) {}
+class Ln extends mathOp(Math.log) {}
+class Log10 extends mathOp(Math.log10) {}
+class Pow extends mathOp(Math.pow) {}
+class Sqrt extends mathOp(Math.sqrt) {}
+class Trunc extends mathOp(Math.trunc) {}
 
-class StringConcatOp extends opTypes(FnOp, StringValue) { }
-class Concat extends fnOp(StringConcatOp, (a, b) => a + b) { }
+class StringConcatOp extends opTypes(FnOp, StringValue) {}
+class Concat extends fnOp(StringConcatOp, (a, b) => a + b) {}
 
 class CaseOp extends opTypes(UnaryFnOp, StringValue) {
-    get alt() { return new StringValue(''); }
+    get alt() {
+        return new StringValue('');
+    }
 }
 
-class ToLower extends fnOp(CaseOp, s => s.toLowerCase()) { }
-class ToUpper extends fnOp(CaseOp, s => s.toUpperCase()) { }
+class ToLower extends fnOp(CaseOp, (s) => s.toLowerCase()) {}
+class ToUpper extends fnOp(CaseOp, (s) => s.toUpperCase()) {}
 
-class ConcatArraysOp extends opTypes(FnOp, ArrayValue) { }
-class ConcatArrays extends fnOp(ConcatArraysOp, (a, b) => a.concat(b)) { }
+class ConcatArraysOp extends opTypes(FnOp, ArrayValue) {}
+class ConcatArrays extends fnOp(ConcatArraysOp, (a, b) => a.concat(b)) {}
 
-class DateOp extends opTypes(UnaryFnOp, DateValue, NumberValue) { }
+class DateOp extends opTypes(UnaryFnOp, DateValue, NumberValue) {}
 
-const dateOp = fn => fnOp(DateOp, fn);
+const dateOp = (fn) => fnOp(DateOp, fn);
 
-class DayOfMonth extends dateOp(d => d.getDate()) { }
-class Year extends dateOp(d => d.getUTCFullYear()) { }
-class Month extends dateOp(d => d.getUTCMonth() + 1) { }
-class Hour extends dateOp(d => d.getUTCHours()) { }
-class Minute extends dateOp(d => d.getUTCMinutes()) { }
-class Second extends dateOp(d => d.getUTCSeconds()) { }
-class Millisecond extends dateOp(d => d.getUTCMilliseconds()) { }
+class DayOfMonth extends dateOp((d) => d.getDate()) {}
+class Year extends dateOp((d) => d.getUTCFullYear()) {}
+class Month extends dateOp((d) => d.getUTCMonth() + 1) {}
+class Hour extends dateOp((d) => d.getUTCHours()) {}
+class Minute extends dateOp((d) => d.getUTCMinutes()) {}
+class Second extends dateOp((d) => d.getUTCSeconds()) {}
+class Millisecond extends dateOp((d) => d.getUTCMilliseconds()) {}
 
 class TypeCond {
     constructor(stack, args, op) {
@@ -196,7 +235,9 @@ class TypeCond {
         for (let arg of this.args) {
             const result = arg.run(fields);
 
-            if (!isType(result)) { return this.alt_value; }
+            if (!isType(result)) {
+                return this.alt_value;
+            }
 
             new_args.push(result);
         }
@@ -210,9 +251,13 @@ class TypeCond {
 }
 
 class PopFromStack {
-    constructor(stack) { this.stack = stack; }
+    constructor(stack) {
+        this.stack = stack;
+    }
 
-    run() { return this.stack.pop(); }
+    run() {
+        return this.stack.pop();
+    }
 }
 
 const ops = {
@@ -239,19 +284,23 @@ const ops = {
     $hour: Hour,
     $minute: Minute,
     $second: Second,
-    $millisecond: Millisecond
+    $millisecond: Millisecond,
 };
 
 const buildOp = (paths, name, args) => {
     const Op = ops[name];
-    if (!Op) { unknownOp(name); }
+    if (!Op) {
+        unknownOp(name);
+    }
 
-    if (!Array.isArray(args)) { args = [args]; }
+    if (!Array.isArray(args)) {
+        args = [args];
+    }
 
     const op = new Op(),
-          tc_nodes = [],
-          new_paths = [],
-          stack = [];
+        tc_nodes = [],
+        new_paths = [],
+        stack = [];
 
     for (let i = 0; i < args.length && i < op.length; i++) {
         const arg = build(new_paths, args[i]);
@@ -288,13 +337,16 @@ const buildOp = (paths, name, args) => {
 
     paths.push(...new_paths);
 
-    if (!tc_nodes.length) { return op; }
+    if (!tc_nodes.length) {
+        return op;
+    }
 
     return new TypeCond(stack, tc_nodes, op);
 };
 
 const buildObject = (paths, expr) => {
-    const op_names = new Set(), fields = new Set();
+    const op_names = new Set(),
+        fields = new Set();
 
     for (let field in expr) {
         (field[0] === '$' ? op_names : fields).add(field);
@@ -318,7 +370,8 @@ const buildObject = (paths, expr) => {
         }
     }
 
-    const new_paths = [], obj = {};
+    const new_paths = [],
+        obj = {};
 
     for (let field in expr) {
         obj[field] = build(new_paths, expr[field]);
@@ -351,12 +404,13 @@ const build = (paths, expr) => {
     return buildObject(paths, expr);
 };
 
-module.exports = (expr) => {
-    const paths = [], ast = build(paths, expr);
+export default (expr) => {
+    const paths = [],
+        ast = build(paths, expr);
 
     return {
         ast,
         paths,
-        has_refs: !!paths.length
+        has_refs: !!paths.length,
     };
 };

@@ -1,12 +1,6 @@
-const {
-    toPathPieces,
-    set,
-    remove2,
-    copy
-} = require('./util.js');
-
-const build = require('./lang/expression.js');
-const Fields = require('./lang/fields.js');
+import { toPathPieces, set, remove2, copy } from './util.js';
+import { build } from './lang/expression.js';
+import { Fields } from './lang/fields.js';
 
 const addition = (doc, new_doc, new_fields) => {
     for (let [path_pieces, add] of new_fields) {
@@ -34,17 +28,18 @@ const _build = (value1) => {
     };
 };
 
-const project = (_next, spec) => {
-    const toBool = path => !!spec[path];
+export const project = (_next, spec) => {
+    const toBool = (path) => !!spec[path];
     let _id_bool = true;
 
-    if (spec.hasOwnProperty('_id')) {
+    if (Object.prototype.hasOwnProperty.call(spec, '_id')) {
         _id_bool = toBool('_id');
 
         delete spec._id;
     }
 
-    const existing_fields = [], new_fields = [];
+    const existing_fields = [],
+        new_fields = [];
     let is_inclusion = true;
 
     const _mode = (path) => {
@@ -63,9 +58,7 @@ const project = (_next, spec) => {
         const value = spec[path];
         const path_pieces = toPathPieces(path);
 
-        if (typeof value === 'boolean' ||
-            value === 1 ||
-            value === 0) {
+        if (typeof value === 'boolean' || value === 1 || value === 0) {
             mode(path);
             existing_fields.push(path_pieces);
         } else {
@@ -86,7 +79,7 @@ const project = (_next, spec) => {
 
         if (_id_bool) {
             project = (doc, new_doc) => {
-                if (doc.hasOwnProperty('_id')) {
+                if (Object.prototype.hasOwnProperty.call(doc, '_id')) {
                     new_doc._id = doc._id;
                 }
             };
@@ -108,12 +101,14 @@ const project = (_next, spec) => {
 
         const project = is_inclusion ? copy : remove2;
 
-        steps.push(doc => project(doc, existing_fields));
+        steps.push((doc) => project(doc, existing_fields));
     }
 
     const next = (cb) => {
         _next((error, doc) => {
-            if (!doc) { return cb(error); }
+            if (!doc) {
+                return cb(error);
+            }
 
             let new_doc = doc;
 
@@ -127,5 +122,3 @@ const project = (_next, spec) => {
 
     return next;
 };
-
-module.exports = project;

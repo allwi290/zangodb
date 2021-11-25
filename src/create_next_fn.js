@@ -1,17 +1,10 @@
-const merge = require('deepmerge');
+import merge from 'deepmerge';
+import { hashify, getIDBError } from './util.js';
+import filter from './filter.js';
+import sort from './sort.js';
+import { build, Conjunction, Disjunction, Exists } from './lang/filter.js';
 
-const { hashify, getIDBError } = require('./util.js'),
-      filter = require('./filter.js'),
-      sort = require('./sort.js');
-
-const {
-    build,
-    Conjunction,
-    Disjunction,
-    Exists
-} = require('./lang/filter.js');
-
-const toIDBDirection = value => value > 0 ? 'next' : 'prev';
+const toIDBDirection = (value) => (value > 0 ? 'next' : 'prev');
 
 const joinPredicates = (preds) => {
     if (preds.length > 1) {
@@ -27,33 +20,40 @@ const removeClause = ({ parent, index }) => {
 
 const openConn = ({ col, read_pref }, cb) => {
     col._db._getConn((error, idb) => {
-        if (error) { return cb(error); }
+        if (error) {
+            return cb(error);
+        }
 
         const name = col._name;
 
         try {
             const trans = idb.transaction([name], read_pref);
-            trans.onerror = e => cb(getIDBError(e));
+            trans.onerror = (e) => cb(getIDBError(e));
 
             cb(null, trans.objectStore(name));
-        } catch (error) { cb(error); }
+        } catch (error) {
+            cb(error);
+        }
     });
 };
 
 const getIDBReqWithIndex = (store, clause) => {
     const key_range = clause.idb_key_range || null,
-          direction = clause.idb_direction || 'next',
-          { literal } = clause.path;
+        direction = clause.idb_direction || 'next',
+        { literal } = clause.path;
 
     let index;
 
-    if (literal === '_id') { index = store; }
-    else { index = store.index(literal); }
+    if (literal === '_id') {
+        index = store;
+    } else {
+        index = store.index(literal);
+    }
 
     return index.openCursor(key_range, direction);
 };
 
-const getIDBReqWithoutIndex = store => store.openCursor();
+const getIDBReqWithoutIndex = (store) => store.openCursor();
 
 const buildPredicates = (pipeline) => {
     const new_pipeline = [];
@@ -62,8 +62,12 @@ const buildPredicates = (pipeline) => {
         if (fn === filter) {
             const pred = build(arg);
 
-            if (pred === false) { return; }
-            if (!pred) { continue; }
+            if (pred === false) {
+                return;
+            }
+            if (!pred) {
+                continue;
+            }
 
             arg = pred;
         }
@@ -76,15 +80,19 @@ const buildPredicates = (pipeline) => {
 
 const initPredAndSortSpec = (config) => {
     const { pipeline } = config,
-          preds = [],
-          sort_specs = [];
+        preds = [],
+        sort_specs = [];
 
     let i = 0;
 
     for (let [fn, arg] of pipeline) {
-        if (fn === sort) { sort_specs.push(arg); }
-        else if (fn === filter) { preds.push(arg); }
-        else { break; }
+        if (fn === sort) {
+            sort_specs.push(arg);
+        } else if (fn === filter) {
+            preds.push(arg);
+        } else {
+            break;
+        }
 
         i++;
     }
@@ -99,19 +107,26 @@ const initPredAndSortSpec = (config) => {
 };
 
 const getClauses = (col, pred) => {
-    if (!pred) { return []; }
+    if (!pred) {
+        return [];
+    }
 
-    const clauses = [], exists_clauses = [];
+    const clauses = [],
+        exists_clauses = [];
 
     for (let clause of pred.getClauses()) {
         if (col._isIndexed(clause.path.literal)) {
             if (clause instanceof Exists) {
                 exists_clauses.push(clause);
-            } else { clauses.push(clause); }
+            } else {
+                clauses.push(clause);
+            }
         }
     }
 
-    if (clauses.length) { return clauses; }
+    if (clauses.length) {
+        return clauses;
+    }
 
     return exists_clauses;
 };
@@ -123,7 +138,9 @@ const initClauses = (config) => {
 };
 
 const initHint = (config) => {
-    if (!config.hint) { return; }
+    if (!config.hint) {
+        return;
+    }
 
     const { clauses, hint } = config;
 
@@ -143,14 +160,18 @@ const initHint = (config) => {
 };
 
 const initSort = (config) => {
-    if (!config.sort_spec) { return; }
+    if (!config.sort_spec) {
+        return;
+    }
 
     const { clauses, sort_spec: spec, pipeline } = config;
     const new_clauses = [];
 
     for (let clause of clauses) {
         const { literal } = clause.path;
-        if (!spec.hasOwnProperty(literal)) { continue; }
+        if (!Object.prototype.hasOwnProperty.call(spec, literal)) {
+            continue;
+        }
 
         const order = spec[literal];
         clause.idb_direction = toIDBDirection(order);
@@ -171,7 +192,7 @@ const createGetIDBReqFn = ({ pred, clauses, pipeline }) => {
     if (clauses.length) {
         const clause = clauses[0];
 
-        getIDBReq = store => getIDBReqWithIndex(store, clause);
+        getIDBReq = (store) => getIDBReqWithIndex(store, clause);
 
         if (!pred || clause === pred) {
             return getIDBReq;
@@ -181,7 +202,9 @@ const createGetIDBReqFn = ({ pred, clauses, pipeline }) => {
     } else {
         getIDBReq = getIDBReqWithoutIndex;
 
-        if (!pred) { return getIDBReq; }
+        if (!pred) {
+            return getIDBReq;
+        }
     }
 
     pipeline.unshift([filter, pred]);
@@ -201,7 +224,7 @@ const createGetIDBCurFn = (config) => {
             cb();
         };
 
-        idb_req.onerror = e => cb(getIDBError(e));
+        idb_req.onerror = (e) => cb(getIDBError(e));
     };
 
     const progressCur = (cb) => {
@@ -211,19 +234,23 @@ const createGetIDBCurFn = (config) => {
 
     let getCur = (cb) => {
         openConn(config, (error, store) => {
-            if (error) { return cb(error); }
+            if (error) {
+                return cb(error);
+            }
 
             idb_req = getIDBReq(store);
 
             onIDBCur((error) => {
-                if (idb_cur) { getCur = progressCur; }
+                if (idb_cur) {
+                    getCur = progressCur;
+                }
 
                 cb(error);
             });
         });
     };
 
-    return cb => getCur(error => cb(error, idb_cur));
+    return (cb) => getCur((error) => cb(error, idb_cur));
 };
 
 const addPipelineStages = ({ pipeline }, next) => {
@@ -235,14 +262,15 @@ const addPipelineStages = ({ pipeline }, next) => {
 };
 
 const createParallelNextFn = (config) => {
-    const next_fns = [], pred_args = config.pred.args;
+    const next_fns = [],
+        pred_args = config.pred.args;
 
     for (let i = pred_args.length - 1; i >= 0; i--) {
         const new_config = {
             col: config.col,
             read_pref: config.read_pref,
             pred: pred_args[i],
-            pipeline: []
+            pipeline: [],
         };
 
         initClauses(new_config);
@@ -267,22 +295,31 @@ const createParallelNextFn = (config) => {
     let currentNextFn = getNextFn();
 
     const changeNextFn = (cb) => {
-        if (currentNextFn = getNextFn()) { next(cb); }
-        else { cb(); }
+        if ((currentNextFn = getNextFn())) {
+            next(cb);
+        } else {
+            cb();
+        }
     };
 
     const next = (cb) => {
         currentNextFn((error, doc, idb_cur) => {
-            if (error) { cb(error); }
-            else if (!doc) { changeNextFn(cb); }
-            else if (onDoc(doc)) {
+            if (error) {
+                cb(error);
+            } else if (!doc) {
+                changeNextFn(cb);
+            } else if (onDoc(doc)) {
                 cb(null, doc, idb_cur);
-            } else { next(cb); }
+            } else {
+                next(cb);
+            }
         });
     };
 
     const spec = config.sort_spec;
-    if (spec) { config.pipeline.push([sort, spec]); }
+    if (spec) {
+        config.pipeline.push([sort, spec]);
+    }
 
     return next;
 };
@@ -292,27 +329,35 @@ const createNextFn = (config) => {
 
     const next = (cb) => {
         getIDBCur((error, idb_cur) => {
-            if (!idb_cur) { cb(error); }
-            else { cb(null, idb_cur.value, idb_cur); }
+            if (!idb_cur) {
+                cb(error);
+            } else {
+                cb(null, idb_cur.value, idb_cur);
+            }
         });
     };
 
     return next;
 };
 
-module.exports = (cur) => {
+export default (cur) => {
     let pipeline;
 
-    try { pipeline = buildPredicates(cur._pipeline); }
-    catch (error) { return cb => cb(error); }
+    try {
+        pipeline = buildPredicates(cur._pipeline);
+    } catch (error) {
+        return (cb) => cb(error);
+    }
 
-    if (!pipeline) { return cb => cb(); }
+    if (!pipeline) {
+        return (cb) => cb();
+    }
 
     const config = {
         col: cur._col,
         read_pref: cur._read_pref,
         hint: cur._hint,
-        pipeline
+        pipeline,
     };
 
     initPredAndSortSpec(config);

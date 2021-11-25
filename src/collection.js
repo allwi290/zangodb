@@ -1,13 +1,11 @@
-const Q = require('q');
-
-const { getIDBError } = require('./util.js'),
-      Cursor = require('./cursor.js'),
-      aggregate = require('./aggregate.js'),
-      update = require('./update.js'),
-      remove = require('./remove.js');
-
+import Q from 'q';
+import { getIDBError } from './util.js';
+import { Cursor } from './cursor.js';
+import { aggregate } from './aggregate.js';
+import update from './update.js';
+import remove from './remove.js';
 /** Class representing a collection. */
-class Collection {
+export class Collection {
     /** <strong>Note:</strong> Do not instantiate directly. */
     constructor(db, name) {
         this._db = db;
@@ -19,7 +17,9 @@ class Collection {
      * The name of the collection.
      * @type {string}
      */
-    get name() { return this._name; }
+    get name() {
+        return this._name;
+    }
 
     _isIndexed(path) {
         return this._indexes.has(path) || path === '_id';
@@ -39,7 +39,9 @@ class Collection {
 
         cur.filter(expr);
 
-        if (projection_spec) { cur.project(projection_spec); }
+        if (projection_spec) {
+            cur.project(projection_spec);
+        }
 
         return cur;
     }
@@ -64,8 +66,11 @@ class Collection {
         const cur = this.find(expr, projection_spec).limit(1);
 
         cur.toArray((error, docs) => {
-            if (error) { deferred.reject(error); }
-            else { deferred.resolve(docs[0]); }
+            if (error) {
+                deferred.reject(error);
+            } else {
+                deferred.resolve(docs[0]);
+            }
         });
 
         deferred.promise.nodeify(cb);
@@ -85,12 +90,14 @@ class Collection {
      *     { $unwind: '$array' }
      * ]);
      */
-    aggregate(pipeline) { return aggregate(this, pipeline); }
+    aggregate(pipeline) {
+        return aggregate(this, pipeline);
+    }
 
     _validate(doc) {
         for (let field in doc) {
             if (field[0] === '$') {
-                throw Error("field name cannot start with '$'");
+                throw Error('field name cannot start with "$"');
             }
 
             const value = doc[field];
@@ -121,7 +128,9 @@ class Collection {
      * });
      */
     insert(docs, cb) {
-        if (!Array.isArray(docs)) { docs = [docs]; }
+        if (!Array.isArray(docs)) {
+            docs = [docs];
+        }
 
         const deferred = Q.defer();
 
@@ -130,11 +139,14 @@ class Collection {
 
             const name = this._name;
 
-            try { trans = idb.transaction([name], 'readwrite'); }
-            catch (error) { return deferred.reject(error); }
+            try {
+                trans = idb.transaction([name], 'readwrite');
+            } catch (error) {
+                return deferred.reject(error);
+            }
 
             trans.oncomplete = () => deferred.resolve();
-            trans.onerror = e => deferred.reject(getIDBError(e));
+            trans.onerror = (e) => deferred.reject(getIDBError(e));
 
             const store = trans.objectStore(name);
 
@@ -143,15 +155,20 @@ class Collection {
             const iterate = () => {
                 const doc = docs[i];
 
-                try { this._validate(doc); }
-                catch (error) { return deferred.reject(error); }
+                try {
+                    this._validate(doc);
+                } catch (error) {
+                    return deferred.reject(error);
+                }
 
                 const req = store.add(doc);
 
                 req.onsuccess = () => {
                     i++;
 
-                    if (i < docs.length) { iterate(); }
+                    if (i < docs.length) {
+                        iterate();
+                    }
                 };
             };
 
@@ -170,8 +187,11 @@ class Collection {
         cur.filter(expr);
 
         fn(cur, (error) => {
-            if (error) { deferred.reject(error); }
-            else { deferred.resolve(); }
+            if (error) {
+                deferred.reject(error);
+            } else {
+                deferred.resolve();
+            }
         });
 
         deferred.promise.nodeify(cb);
@@ -216,5 +236,3 @@ class Collection {
         return this._modify(remove, expr, cb);
     }
 }
-
-module.exports = Collection;

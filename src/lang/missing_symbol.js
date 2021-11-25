@@ -1,1 +1,1 @@
-module.exports = Symbol('missing');
+export default Symbol('missing');

@@ -1,10 +1,8 @@
-const { toPathPieces } = require('../util.js');
+import { toPathPieces } from '../util.js';
 
-class Path {
+export class Path {
     constructor(path) {
         this.pieces = toPathPieces(path);
         this.literal = path;
     }
 }
-
-module.exports = Path;

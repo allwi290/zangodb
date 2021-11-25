@@ -1,1 +1,2 @@
-module.exports = { Db: require('./db.js') };
+import Db from './db.js';
+export default Db;

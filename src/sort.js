@@ -1,8 +1,4 @@
-const {
-    toPathPieces,
-    isObject,
-    equal
-} = require('./util.js');
+import { toPathPieces, isObject, equal } from './util.js';
 
 const compare = (a, b, path_pieces, order) => {
     for (var i = 0; i < path_pieces.length - 1; i++) {
@@ -12,21 +8,29 @@ const compare = (a, b, path_pieces, order) => {
         b = b[piece];
 
         if (!isObject(a)) {
-            if (!isObject(b)) { return null; }
-        } else if (isObject(b)) { continue; }
+            if (!isObject(b)) {
+                return null;
+            }
+        } else if (isObject(b)) {
+            continue;
+        }
 
         return order;
     }
 
     const piece = path_pieces[i];
 
-    if (!a.hasOwnProperty(piece)) {
-        if (!b.hasOwnProperty(piece)) { return null; }
-    } else if (b.hasOwnProperty(piece)) {
+    if (!Object.prototype.hasOwnProperty.call(a, piece)) {
+        if (!Object.prototype.hasOwnProperty.call(b, piece)) {
+            return null;
+        }
+    } else if (Object.prototype.hasOwnProperty.call(b, piece)) {
         a = a[piece];
         b = b[piece];
 
-        if (equal(a, b)) { return 0; }
+        if (equal(a, b)) {
+            return 0;
+        }
 
         return (a < b ? 1 : -1) * order;
     }
@@ -34,7 +38,7 @@ const compare = (a, b, path_pieces, order) => {
     return order;
 };
 
-module.exports = (_next, spec) => {
+export default (_next, spec) => {
     const sorts = [];
 
     for (let path in spec) {
@@ -45,7 +49,9 @@ module.exports = (_next, spec) => {
         for (var [path_pieces, order] of sorts) {
             const result = compare(a, b, path_pieces, order);
 
-            if (result > 0 || result < 0) { return result; }
+            if (result > 0 || result < 0) {
+                return result;
+            }
         }
 
         return -order;
@@ -53,11 +59,13 @@ module.exports = (_next, spec) => {
 
     let docs = [];
 
-    const fn = cb => cb(null, docs.pop());
+    const fn = (cb) => cb(null, docs.pop());
 
     let next = (cb) => {
         const done = (error) => {
-            if (error) { return cb(error); }
+            if (error) {
+                return cb(error);
+            }
 
             docs = docs.sort(sortFn);
 
@@ -66,7 +74,9 @@ module.exports = (_next, spec) => {
 
         (function iterate() {
             _next((error, doc) => {
-                if (!doc) { return done(error); }
+                if (!doc) {
+                    return done(error);
+                }
 
                 docs.push(doc);
                 iterate();
@@ -74,5 +84,5 @@ module.exports = (_next, spec) => {
         })();
     };
 
-    return cb => next(cb);
+    return (cb) => next(cb);
 };

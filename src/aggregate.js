@@ -1,5 +1,5 @@
-const { unknownOp } = require('./util.js');
-const Cursor = require('./cursor.js');
+import { unknownOp } from './util.js';
+import { Cursor } from './cursor.js';
 
 const ops = {
     $match: (cur, doc) => cur.filter(doc),
@@ -25,7 +25,7 @@ const getStageObject = (doc) => {
     return [fn, doc[op_key]];
 };
 
-const aggregate = (col, pipeline) => {
+export const aggregate = (col, pipeline) => {
     const cur = new Cursor(col, 'readonly');
 
     for (let doc of pipeline) {
@@ -36,5 +36,3 @@ const aggregate = (col, pipeline) => {
 
     return cur;
 };
-
-module.exports = aggregate;

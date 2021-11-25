@@ -1,14 +1,13 @@
-const EventEmitter = require('events');
-const Q = require('q');
-
-const createNextFn = require('./create_next_fn.js'),
-      filter = require('./filter.js'),
-      project = require('./project.js'),
-      group = require('./group.js'),
-      unwind = require('./unwind.js'),
-      sort = require('./sort.js'),
-      skip = require('./skip.js'),
-      limit = require('./limit.js');
+import EventEmitter from 'events';
+import Q from 'q';
+import createNextFn from './create_next_fn.js';
+import filter from './filter.js';
+import { project } from './project.js';
+import group from './group.js';
+import unwind from './unwind.js';
+import sort from './sort.js';
+import skip from './skip.js';
+import limit from './limit.js';
 
 /**
  * Cursor data event.
@@ -27,7 +26,7 @@ const createNextFn = require('./create_next_fn.js'),
  * unwind and sort, methods each add an additional stage to the
  * cursor pipeline and thus do not override any previous invocations.
  */
-class Cursor extends EventEmitter {
+export class Cursor extends EventEmitter {
     /** <strong>Note:</strong> Do not instantiate directly. */
     constructor(col, read_pref) {
         super();
@@ -243,5 +242,3 @@ class Cursor extends EventEmitter {
         this._next(cb);
     }
 }
-
-module.exports = Cursor;
