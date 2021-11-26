@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-
-const build = require('../../src/lang/expression.js');
-const Fields = require('../../src/lang/fields.js');
+/*global describe it*/
+import { expect } from 'chai';
+import build from '../../src/lang/expression.js';
+import { Fields } from '../../src/lang/fields.js';
 
 const evalExpr = (expr, doc = {}) => {
     const { ast, has_refs } = build(expr);
@@ -234,7 +234,7 @@ describe('arithmetic', () => {
             expect(build({ y: { $trunc: 4 } }).has_refs).to.be.false;
         });
 
-        it("should truncate a number to its integer", () => {
+        it('should truncate a number to its integer', () => {
             expect(evalExpr({ $trunc: 0 })).to.equal(0);
             expect(evalExpr({ $trunc: 7.80 })).to.equal(7);
             expect(evalExpr({ $trunc: '$x' }, { x: -2.3 })).to.equal(-2);

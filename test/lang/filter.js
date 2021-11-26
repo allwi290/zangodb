@@ -1,16 +1,19 @@
-const { expect } = require('chai');
-
-const { build } = require('../../src/lang/filter.js');
-const Fields = require('../../src/lang/fields.js');
+/*global describe it*/
+import 'fake-indexeddb/auto.js';
+import { expect } from 'chai';
+import { build } from '../../src/lang/filter.js';
+import { Fields } from '../../src/lang/fields.js';
 
 const evalExpr = (expr, doc) => {
     const pred = build(expr);
-    if (pred === false) { return false; }
+    if (pred === false) {
+        return false;
+    }
 
     return pred.run(new Fields(doc));
 };
 
-const getClauses = expr => build(expr).getClauses();
+const getClauses = (expr) => build(expr).getClauses();
 
 describe('equality (without $eq)', () => {
     it('should find clauses for index and be matchable', () => {
@@ -60,7 +63,7 @@ describe('$eq', () => {
 });
 
 describe('$ne', () => {
-    it("shouldn't find clauses for index", () => {
+    it('should not find clauses for index', () => {
         expect(getClauses({ x: { $ne: 4 } })).to.have.lengthOf(0);
     });
 
@@ -89,82 +92,140 @@ describe('$and', () => {
         expect(clauses1).to.have.lengthOf(2);
 
         const clauses2 = getClauses({
-            $and: [{ $and: [{ x: 4 }, { z: 3 }] }, { k: 3 }]
+            $and: [{ $and: [{ x: 4 }, { z: 3 }] }, { k: 3 }],
         });
 
         expect(clauses2).to.have.lengthOf(3);
     });
 
     it('should perform conjunction', () => {
-        expect(evalExpr({
-            $and: [{ x: 2 }, { g: 3 }]
-        }, { x: 2, g: 8 })).to.be.false;
+        expect(
+            evalExpr(
+                {
+                    $and: [{ x: 2 }, { g: 3 }],
+                },
+                { x: 2, g: 8 }
+            )
+        ).to.be.false;
 
-        expect(evalExpr({
-            $and: [{ x: 2 }, { g: 3 }]
-        }, { x: 2, g: 3 })).to.be.true;
+        expect(
+            evalExpr(
+                {
+                    $and: [{ x: 2 }, { g: 3 }],
+                },
+                { x: 2, g: 3 }
+            )
+        ).to.be.true;
 
-        expect(evalExpr({
-            $and: [{ $and: [{ x: 2 }, { g: 3 }] }, { z: 8 }]
-        }, { x: 2, g: 8, z: 10 })).to.be.false;
+        expect(
+            evalExpr(
+                {
+                    $and: [{ $and: [{ x: 2 }, { g: 3 }] }, { z: 8 }],
+                },
+                { x: 2, g: 8, z: 10 }
+            )
+        ).to.be.false;
 
-        expect(evalExpr({
-            $and: [{ $and: [{ x: 2 }, { g: 3 }] }, { z: 8 }]
-        }, { x: 2, g: 8, z: 8 })).to.be.false;
+        expect(
+            evalExpr(
+                {
+                    $and: [{ $and: [{ x: 2 }, { g: 3 }] }, { z: 8 }],
+                },
+                { x: 2, g: 8, z: 8 }
+            )
+        ).to.be.false;
     });
 });
 
 describe('$or', () => {
-    it("shouldn't find clauses for index except when only one argument", () => {
+    it('should not find clauses for index except when only one argument', () => {
         expect(getClauses({ $or: [{ x: 4 }] })).to.have.lengthOf(1);
 
-        expect(getClauses({
-            $or: [{ x: 4 }, { k: 3 }]
-        })).to.have.lengthOf(0);
+        expect(
+            getClauses({
+                $or: [{ x: 4 }, { k: 3 }],
+            })
+        ).to.have.lengthOf(0);
 
-        expect(getClauses({
-            $or: [{ $or: [{ x: 4 }, { z: 3 }] }, { k: 3 }]
-        })).to.have.lengthOf(0);
+        expect(
+            getClauses({
+                $or: [{ $or: [{ x: 4 }, { z: 3 }] }, { k: 3 }],
+            })
+        ).to.have.lengthOf(0);
     });
 
     it('should perform disjunction', () => {
-        expect(evalExpr({
-            $or: [{ x: 6 }, { g: 3 }]
-        }, { x: 2, g: 8 })).to.be.false;
+        expect(
+            evalExpr(
+                {
+                    $or: [{ x: 6 }, { g: 3 }],
+                },
+                { x: 2, g: 8 }
+            )
+        ).to.be.false;
 
-        expect(evalExpr({
-            $or: [{ x: 2 }, { g: 3 }]
-        }, { x: 2, g: 8 })).to.be.true;
+        expect(
+            evalExpr(
+                {
+                    $or: [{ x: 2 }, { g: 3 }],
+                },
+                { x: 2, g: 8 }
+            )
+        ).to.be.true;
 
-        expect(evalExpr({
-            $or: [{ x: 2 }, { g: 3 }]
-        }, { x: 2, g: 3 })).to.be.true;
+        expect(
+            evalExpr(
+                {
+                    $or: [{ x: 2 }, { g: 3 }],
+                },
+                { x: 2, g: 3 }
+            )
+        ).to.be.true;
 
-        expect(evalExpr({
-            $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }]
-        }, { x: 4, g: 8, z: 10 })).to.be.false;
+        expect(
+            evalExpr(
+                {
+                    $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }],
+                },
+                { x: 4, g: 8, z: 10 }
+            )
+        ).to.be.false;
 
-        expect(evalExpr({
-            $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }]
-        }, { x: 2, g: 8, z: 10 })).to.be.true;
+        expect(
+            evalExpr(
+                {
+                    $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }],
+                },
+                { x: 2, g: 8, z: 10 }
+            )
+        ).to.be.true;
 
-        expect(evalExpr({
-            $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }]
-        }, { x: 2, g: 8, z: 8 })).to.be.true;
+        expect(
+            evalExpr(
+                {
+                    $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }],
+                },
+                { x: 2, g: 8, z: 8 }
+            )
+        ).to.be.true;
     });
 });
 
 describe('$not', () => {
-    it("shouldn't find clauses for index", () => {
+    it('should not find clauses for index', () => {
         expect(getClauses({ $not: [{ x: 4 }] })).to.have.lengthOf(0);
 
-        expect(getClauses({
-            $not: [{ x: 4 }, { k: 3 }]
-        })).to.have.lengthOf(0);
+        expect(
+            getClauses({
+                $not: [{ x: 4 }, { k: 3 }],
+            })
+        ).to.have.lengthOf(0);
 
-        expect(getClauses({
-            $not: [{ $not: [{ x: 4 }, { z: 3 }] }, { k: 3 }]
-        })).to.have.lengthOf(0);
+        expect(
+            getClauses({
+                $not: [{ $not: [{ x: 4 }, { z: 3 }] }, { k: 3 }],
+            })
+        ).to.have.lengthOf(0);
     });
 
     it('should perform negation', () => {
@@ -292,7 +353,7 @@ describe('$in', () => {
 });
 
 describe('$nin', () => {
-    it("shouldn't find clauses for index", () => {
+    it('should not find clauses for index', () => {
         expect(getClauses({ x: { $nin: [3] } })).to.have.lengthOf(0);
         expect(getClauses({ x: { $nin: [3, 4] } })).to.have.lengthOf(0);
     });
@@ -304,29 +365,41 @@ describe('$nin', () => {
 });
 
 describe('$elemMatch', () => {
-    it("shouldn't find clauses for index", () => {
-        expect(getClauses({
-            elements: { $elemMatch: { x: 2 } }
-        })).to.have.lengthOf(0);
+    it('should not find clauses for index', () => {
+        expect(
+            getClauses({
+                elements: { $elemMatch: { x: 2 } },
+            })
+        ).to.have.lengthOf(0);
     });
 
     it('should test if any iterable elements satisify a predicate', () => {
-        expect(evalExpr({
-            elements: { $elemMatch: { x: 2 } }
-        }, {
-            elements: [4, 'string', { k: 3 }, [3]]
-        })).to.be.false;
+        expect(
+            evalExpr(
+                {
+                    elements: { $elemMatch: { x: 2 } },
+                },
+                {
+                    elements: [4, 'string', { k: 3 }, [3]],
+                }
+            )
+        ).to.be.false;
 
-        expect(evalExpr({
-            elements: { $elemMatch: { x: 2 } }
-        }, {
-            elements: [4, 'string', { x: 2 }, [3]]
-        })).to.be.true;
+        expect(
+            evalExpr(
+                {
+                    elements: { $elemMatch: { x: 2 } },
+                },
+                {
+                    elements: [4, 'string', { x: 2 }, [3]],
+                }
+            )
+        ).to.be.true;
     });
 });
 
 describe('$regex', () => {
-    it("shouldn't find clauses for index", () => {
+    it('should not find clauses for index', () => {
         expect(getClauses({ s: { $regex: '' } })).to.have.lengthOf(0);
     });
 
@@ -350,7 +423,7 @@ describe('$exists', () => {
         expect(getClauses({ x: { $exists: 1 } })).to.have.lengthOf(1);
     });
 
-    it("shouldn't find clauses for index when exists is false", () => {
+    it('should not find clauses for index when exists is false', () => {
         expect(getClauses({ x: { $exists: 0 } })).to.have.lengthOf(0);
     });
 
@@ -359,7 +432,7 @@ describe('$exists', () => {
         expect(evalExpr({ x: { $exists: 1 } }, { x: 4 })).to.be.true;
     });
 
-    it("should test if document doesn't contain a field", () => {
+    it('should test if document does not contain a field', () => {
         expect(evalExpr({ x: { $exists: 0 } }, { x: 4 })).to.be.false;
         expect(evalExpr({ x: { $exists: 0 } }, { k: 4 })).to.be.true;
     });

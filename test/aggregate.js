@@ -1,7 +1,10 @@
-const { expect } = require('chai');
+/*global describe it after before*/
 
+import { expect } from 'chai';
+import {Db} from '../src/db.js';
+//import {describe, before, after, it} from 'mocha';
 describe('$match', () => {
-    const db = new zango.Db(Math.random(), ['col']);
+    const db = new Db(Math.random(), ['col']);
     const col = db.collection('col');
 
     const docs = [
@@ -29,6 +32,3 @@ describe('$match', () => {
         });
     });
 });
-
-describe('$group', () => require('./group.js'));
-describe('$unwind', () => require('./unwind.js'));

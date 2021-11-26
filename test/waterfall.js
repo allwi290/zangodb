@@ -1,4 +1,4 @@
-module.exports = (fns, cb) => {
+export default (fns, cb) => {
     const last = fns.pop();
 
     (function next() {

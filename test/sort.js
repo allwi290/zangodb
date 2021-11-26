@@ -1,6 +1,8 @@
-const { expect } = require('chai');
-
-const db = new zango.Db(Math.random(), { col: ['x'] });
+/* global before after it*/
+import 'fake-indexeddb/auto.js';
+import { expect } from 'chai';
+import { Db } from '../src/db.js';
+const db = new Db(Math.random(), { col: ['x'] });
 const col = db.collection('col');
 
 const docs = [

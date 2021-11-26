@@ -1,10 +1,11 @@
-const { expect } = require('chai');
-
-const { build } = require('../src/lang/filter.js'),
-      Fields = require('../src/lang/fields.js'),
-      waterfall = require('./waterfall.js');
-
-const db = new zango.Db(Math.random(), { col: ['x', 'g'] });
+/*global describe it before after*/
+import 'fake-indexeddb/auto.js';
+import { expect } from 'chai';
+import { build } from '../src/lang/filter.js';
+import { Fields } from '../src/lang/fields.js';
+import waterfall from './waterfall.js';
+import { Db } from '../src/db.js';
+const db = new Db(Math.random(), { col: ['x', 'g'] });
 const col = db.collection('col');
 
 const docs = [
@@ -160,7 +161,7 @@ describe('$exists', () => {
         query({ g: { $exists: 1 } }, done);
     });
 
-    it("should test if document doesn't contain a field", (done) => {
+    it('should test if document does not contain a field', (done) => {
         query({ g: { $exists: 0 } }, done);
     });
 });

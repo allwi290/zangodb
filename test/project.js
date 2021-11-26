@@ -1,8 +1,11 @@
-const { expect } = require('chai');
+/* eslint-disable no-sparse-arrays */
+/* global it before after */
+import 'fake-indexeddb/auto.js';
+import { expect } from 'chai';
+import waterfall from './waterfall.js';
+import { Db } from '../src/db.js';
 
-const waterfall = require('./waterfall.js');
-
-const db = new zango.Db(Math.random(), ['col']);
+const db = new Db(Math.random(), ['col']);
 const col = db.collection('col');
 
 const doc = {
@@ -61,7 +64,7 @@ it('should support exclusion of pre-existing sub fields', (done) => {
     }, done);
 });
 
-it("should support inclusion of '_id' field", (done) => {
+it('should support inclusion of "_id" field', (done) => {
     waterfall([
         (next) => {
             project({
@@ -88,7 +91,7 @@ it("should support inclusion of '_id' field", (done) => {
     ], done);
 });
 
-it("should support exclusion of '_id' field", (done) => {
+it('should support exclusion of "_id" field', (done) => {
     waterfall([
         (next) => {
             project({

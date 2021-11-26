@@ -1,5 +1,5 @@
 import { toPathPieces, set, remove2, copy } from './util.js';
-import { build } from './lang/expression.js';
+import build from './lang/expression.js';
 import { Fields } from './lang/fields.js';
 
 const addition = (doc, new_doc, new_fields) => {
