@@ -193,7 +193,9 @@ export const copy = (obj, paths) => {
         }
     }
 
-    return new_objs.reduce(deepMerge, {});
+    return new_objs.reduce((prev, curr) => {
+        return deepMerge(prev, curr);
+    }, {});
 };
 
 export const equal = (value1, value2) => {
