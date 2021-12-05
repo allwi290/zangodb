@@ -1,7 +1,8 @@
-import { series, src, dest } from 'gulp';
+import gulp from 'gulp';
 import uglify from 'gulp-uglify';
 import del from 'del';
 import webpackStream from 'webpack-stream';
+const { series, src, dest } = gulp;
 export function clean() {
     return del([
         'dist/**/*',

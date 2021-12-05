@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import { build } from '../src/lang/filter.js';
 import { Fields } from '../src/lang/fields.js';
 import waterfall from './waterfall.js';
-import { Db } from '../src/db.js';
+import Db from '../src/db.js';
 const db = new Db(Math.random(), { col: ['x', 'g'] });
 const col = db.collection('col');
 

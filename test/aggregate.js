@@ -1,7 +1,7 @@
 /*global describe it after before*/
 
 import { expect } from 'chai';
-import {Db} from '../src/db.js';
+import Db from '../src/db.js';
 //import {describe, before, after, it} from 'mocha';
 describe('$match', () => {
     const db = new Db(Math.random(), ['col']);

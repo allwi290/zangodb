@@ -45,7 +45,7 @@ import { Collection } from './collection.js';
  * // Define collections without indexes.
  * let db = new zango.Db('mydb', ['col1', 'col2']);
  */
-export class Db extends EventEmitter {
+export default class Db extends EventEmitter {
     constructor(name, version, config) {
         super();
 

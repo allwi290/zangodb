@@ -1,7 +1,7 @@
 /* global before after describe it*/
 import 'fake-indexeddb/auto.js';
 import { expect } from 'chai';
-import { Db } from '../src/db.js';
+import Db from '../src/db.js';
 const docs = [
     { x: 2, g: 1 },
     { x: 2, g: 4 },

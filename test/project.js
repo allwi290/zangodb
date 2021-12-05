@@ -3,7 +3,7 @@
 import 'fake-indexeddb/auto.js';
 import { expect } from 'chai';
 import waterfall from './waterfall.js';
-import { Db } from '../src/db.js';
+import Db from '../src/db.js';
 
 const db = new Db(Math.random(), ['col']);
 const col = db.collection('col');

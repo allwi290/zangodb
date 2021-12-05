@@ -2,32 +2,38 @@ import deepMerge from 'deepmerge';
 import clone from 'clone';
 import objectHash from 'object-hash';
 
-export const toPathPieces = (path) => path.split('.');
-
-export const _exists = (obj, path_pieces) => {
-    for (var i = 0; i < path_pieces.length - 1; i++) {
-        const piece = path_pieces[i];
-        if (!Object.prototype.hasOwnProperty.call(obj, piece)) {
-            return;
+export function toPathPieces(path) {
+    return path.split('.');
+}
+function hasOwnProperty(object, property) {
+    return Object.prototype.hasOwnProperty.call(object, property);
+}
+/**
+ * Returns the object at position pathPieces, if not found then undefined will be returned
+ * @param {Object} object
+ * @param {Array} pathPieces 
+ * @returns {Object}
+ */
+function exist(object, pathPieces) {
+    console.log(`${JSON.stringify(object)}, ${JSON.stringify(pathPieces)}`);
+    let [currentPiece, ...restPathPieces] = pathPieces;
+    if (restPathPieces.length > 0) {
+        if (hasOwnProperty(object, currentPiece)) {
+            if (isObject(object[currentPiece])) {
+                return exist(object[currentPiece], restPathPieces);
+            } 
         }
-
-        obj = obj[piece];
-
-        if (!isObject(obj)) {
-            return;
-        }
+        return;
+    } else if (hasOwnProperty(object, currentPiece)) {
+        return object;
     }
-
-    if (Object.prototype.hasOwnProperty.call(obj, path_pieces[i])) {
-        return obj;
-    }
-};
-
+    return;
+}
 export const exists = (obj, path_pieces) => {
-    return !!_exists(obj, path_pieces);
+    return !!exist(obj, path_pieces);
 };
 
-export const create = (obj, path_pieces, i) => {
+const create = (obj, path_pieces, i) => {
     for (let j = i; j < path_pieces.length - 1; j++) {
         obj[path_pieces[j]] = {};
         obj = obj[path_pieces[j]];
@@ -37,7 +43,7 @@ export const create = (obj, path_pieces, i) => {
 };
 
 export const get = (obj, path_pieces, fn) => {
-    if ((obj = _exists(obj, path_pieces))) {
+    if ((obj = exist(obj, path_pieces))) {
         fn(obj, path_pieces[path_pieces.length - 1]);
     }
 };
@@ -63,32 +69,31 @@ export const modify = (obj, path_pieces, update, init) => {
         init(obj, last);
     };
 
-    if (!Object.prototype.hasOwnProperty.call(obj, path_pieces[0])) {
+    if (hasOwnProperty(obj, path_pieces[0])) {
+        if (path_pieces.length > 1) {
+            obj = obj[path_pieces[0]];
+    
+            for (let i = 1; i < path_pieces.length - 1; i++) {
+                const piece = path_pieces[i];
+    
+                if (!isObject(obj[piece])) {
+                    return;
+                }
+                if (Array.isArray(obj) && piece < 0) {
+                    return;
+                }
+    
+                if (!hasOwnProperty(obj, piece)) {
+                    return _create(i);
+                }
+    
+                obj = obj[piece];
+            }
+        }
+        update(obj, last);
+    } else {
         return _create(0);
     }
-
-    if (path_pieces.length > 1) {
-        obj = obj[path_pieces[0]];
-
-        for (let i = 1; i < path_pieces.length - 1; i++) {
-            const piece = path_pieces[i];
-
-            if (!isObject(obj[piece])) {
-                return;
-            }
-            if (Array.isArray(obj) && piece < 0) {
-                return;
-            }
-
-            if (!Object.prototype.hasOwnProperty.call(obj, piece)) {
-                return _create(i);
-            }
-
-            obj = obj[piece];
-        }
-    }
-
-    update(obj, last);
 };
 
 // Delete specified paths from object.
@@ -174,7 +179,7 @@ export const _copy = (obj, new_obj, path_pieces) => {
         new_obj = new_obj[piece];
     }
 
-    if (Object.prototype.hasOwnProperty.call(obj, path_pieces[i])) {
+    if (hasOwnProperty(obj, path_pieces[i])) {
         new_obj[path_pieces[i]] = obj[path_pieces[i]];
 
         return obj;
