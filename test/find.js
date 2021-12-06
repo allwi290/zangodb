@@ -1,5 +1,4 @@
 /*global describe it before after*/
-import 'fake-indexeddb/auto.js';
 import { expect } from 'chai';
 import { build } from '../src/lang/filter.js';
 import { Fields } from '../src/lang/fields.js';

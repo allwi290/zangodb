@@ -15,7 +15,6 @@ function hasOwnProperty(object, property) {
  * @returns {Object}
  */
 function exist(object, pathPieces) {
-    console.log(`${JSON.stringify(object)}, ${JSON.stringify(pathPieces)}`);
     let [currentPiece, ...restPathPieces] = pathPieces;
     if (restPathPieces.length > 0) {
         if (hasOwnProperty(object, currentPiece)) {

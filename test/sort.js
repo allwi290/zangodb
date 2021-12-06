@@ -1,4 +1,4 @@
-/* global before after it*/
+/* global describe before after it*/
 import 'fake-indexeddb/auto.js';
 import { expect } from 'chai';
 import Db from '../src/db.js';
@@ -39,43 +39,44 @@ const sortWithIndex = (spec, ...args) => {
 const sortWithoutIndex = (spec, ...args) => {
     sort(_sort(spec), ...args);
 };
-
-it('should sort by ascending using index', (done) => {
-    sortWithIndex({
-        x: 1
-    }, [
-        { x: 2, k: 9 },
-        { x: 3, k: 8 },
-        { x: 4, k: 3 }
-    ], done);
-});
-
-it('should sort by ascending without index', (done) => {
-    sortWithoutIndex({
-        k: 1
-    }, [
-        { x: 4, k: 3 },
-        { x: 3, k: 8 },
-        { x: 2, k: 9 }
-    ], done);
-});
-
-it('should sort by descending using index', (done) => {
-    sortWithIndex({
-        x: -1
-    }, [
-        { x: 4, k: 3 },
-        { x: 3, k: 8 },
-        { x: 2, k: 9 }
-    ], done);
-});
-
-it('should sort by descending without index', (done) => {
-    sortWithoutIndex({
-        k: -1
-    }, [
-        { x: 2, k: 9 },
-        { x: 3, k: 8 },
-        { x: 4, k: 3 }
-    ], done);
+describe('Sorting with and without index', () => {
+    it('should sort by ascending using index', (done) => {
+        sortWithIndex({
+            x: 1
+        }, [
+            { x: 2, k: 9 },
+            { x: 3, k: 8 },
+            { x: 4, k: 3 }
+        ], done);
+    });
+    
+    it('should sort by ascending without index', (done) => {
+        sortWithoutIndex({
+            k: 1
+        }, [
+            { x: 4, k: 3 },
+            { x: 3, k: 8 },
+            { x: 2, k: 9 }
+        ], done);
+    });
+    
+    it('should sort by descending using index', (done) => {
+        sortWithIndex({
+            x: -1
+        }, [
+            { x: 4, k: 3 },
+            { x: 3, k: 8 },
+            { x: 2, k: 9 }
+        ], done);
+    });
+    
+    it('should sort by descending without index', (done) => {
+        sortWithoutIndex({
+            k: -1
+        }, [
+            { x: 2, k: 9 },
+            { x: 3, k: 8 },
+            { x: 4, k: 3 }
+        ], done);
+    }); 
 });

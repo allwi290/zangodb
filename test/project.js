@@ -1,5 +1,5 @@
 /* eslint-disable no-sparse-arrays */
-/* global it before after */
+/* global describe it before after */
 import 'fake-indexeddb/auto.js';
 import { expect } from 'chai';
 import waterfall from './waterfall.js';
@@ -13,7 +13,7 @@ const doc = {
     x: 4,
     k: { g: 3, z: 8 },
     a: [3, 6, 4],
-    str: 'FoO'
+    str: 'FoO',
 };
 
 before(() => col.insert(doc));
@@ -23,7 +23,9 @@ const project = (spec, expected_doc, done) => {
     const cur = col.find({}, spec);
 
     cur.toArray((error, docs) => {
-        if (error) { throw error; }
+        if (error) {
+            throw error;
+        }
 
         expect(docs).to.have.lengthOf(1);
         expect(docs[0]).to.deep.equal(expected_doc);
@@ -32,100 +34,134 @@ const project = (spec, expected_doc, done) => {
     });
 };
 
-it('should support inclusion of pre-existing fields', (done) => {
-    project({ x: 1, str: 1 }, { _id: 1, x: 4, str: 'FoO' }, done);
-});
+describe('Inclusion and exclusion of fields', () => {
+    it('should support inclusion of pre-existing fields', (done) => {
+        project({ x: 1, str: 1 }, { _id: 1, x: 4, str: 'FoO' }, done);
+    });
 
-it('should support inclusion of pre-existing sub fields', (done) => {
-    project({
-        'k.g': 1,
-        'a.1': 1
-    }, {
-        _id: 1,
-        k: { g: 3 },
-        a: [, 6]
-    }, done);
-});
-
-it('should support exclusion of pre-existing fields', (done) => {
-    project({ k: 0, a: 0 }, { _id: 1, x: 4, str: 'FoO' }, done);
-});
-
-it('should support exclusion of pre-existing sub fields', (done) => {
-    project({
-        'k.g': 0,
-        'a.1': 0
-    }, {
-        _id: 1,
-        x: 4,
-        k: { z: 8 },
-        a: [3,, 4],
-        str: 'FoO'
-    }, done);
-});
-
-it('should support inclusion of "_id" field', (done) => {
-    waterfall([
-        (next) => {
-            project({
+    it('should support inclusion of pre-existing sub fields', (done) => {
+        project(
+            {
+                'k.g': 1,
+                'a.1': 1,
+            },
+            {
                 _id: 1,
-                k: 0,
-                a: 0
-            }, {
+                k: { g: 3 },
+                a: [, 6],
+            },
+            done
+        );
+    });
+
+    it('should support exclusion of pre-existing fields', (done) => {
+        project({ k: 0, a: 0 }, { _id: 1, x: 4, str: 'FoO' }, done);
+    });
+
+    it('should support exclusion of pre-existing sub fields', (done) => {
+        project(
+            {
+                'k.g': 0,
+                'a.1': 0,
+            },
+            {
                 _id: 1,
                 x: 4,
-                str: 'FoO'
-            }, next);
-        },
+                k: { z: 8 },
+                a: [3, , 4],
+                str: 'FoO',
+            },
+            done
+        );
+    });
 
-        (next) => {
-            project({
-                _id: 0,
-                k: 0,
-                a: 0
-            }, {
-                x: 4,
-                str: 'FoO'
-            }, next);
-        }
-    ], done);
+    it('should support inclusion of "_id" field', (done) => {
+        waterfall(
+            [
+                (next) => {
+                    project(
+                        {
+                            _id: 1,
+                            k: 0,
+                            a: 0,
+                        },
+                        {
+                            _id: 1,
+                            x: 4,
+                            str: 'FoO',
+                        },
+                        next
+                    );
+                },
+
+                (next) => {
+                    project(
+                        {
+                            _id: 0,
+                            k: 0,
+                            a: 0,
+                        },
+                        {
+                            x: 4,
+                            str: 'FoO',
+                        },
+                        next
+                    );
+                },
+            ],
+            done
+        );
+    });
+
+    it('should support exclusion of "_id" field', (done) => {
+        waterfall(
+            [
+                (next) => {
+                    project(
+                        {
+                            _id: 0,
+                            x: 1,
+                            str: 1,
+                        },
+                        {
+                            x: 4,
+                            str: 'FoO',
+                        },
+                        next
+                    );
+                },
+
+                (next) => {
+                    project(
+                        {
+                            _id: 1,
+                            x: 1,
+                            str: 1,
+                        },
+                        {
+                            _id: 1,
+                            x: 4,
+                            str: 'FoO',
+                        },
+                        next
+                    );
+                },
+            ],
+            done
+        );
+    });
 });
 
-it('should support exclusion of "_id" field', (done) => {
-    waterfall([
-        (next) => {
-            project({
-                _id: 0,
-                x: 1,
-                str: 1
-            }, {
-                x: 4,
-                str: 'FoO'
-            }, next);
-        },
+describe('Addition of fields', () => {
+    it('should support addition of new computed fields', (done) => {
+        const expected_doc = Object.assign({ s: 'FOO' }, doc);
 
-        (next) => {
-            project({
-                _id: 1,
-                x: 1,
-                str: 1
-            }, {
-                _id: 1,
-                x: 4,
-                str: 'FoO'
-            }, next);
-        }
-    ], done);
-});
+        project({ s: { $toUpper: '$str' } }, expected_doc, done);
+    });
 
-it('should support addition of new computed fields', (done) => {
-    const expected_doc = Object.assign({ s: 'FOO' }, doc);
+    it('should support addition of new literal fields', (done) => {
+        const expected_doc = Object.assign({ t: 8 }, doc);
 
-    project({ s: { $toUpper: '$str' } }, expected_doc, done);
-});
-
-it('should support addition of new literal fields', (done) => {
-    const expected_doc = Object.assign({ t: 8 }, doc);
-
-    project({ t: { $literal: 8 } }, expected_doc, done);
+        project({ t: { $literal: 8 } }, expected_doc, done);
+    });
 });
