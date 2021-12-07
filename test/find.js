@@ -17,7 +17,7 @@ const docs = [
     { x: 2, g: 8, z: 10 },
     { x: undefined },
     { x: null },
-    { x: [{ k: 2 }, { k: 8 }] }
+    { x: [{ k: 2 }, { k: 8 }] },
 ];
 
 before(() => col.insert(docs));
@@ -27,33 +27,36 @@ const query = (expr, done) => {
     const cur = col.find(expr);
 
     const pred = build(expr);
-    const fn = doc => pred.run(new Fields(doc));
+    const fn = (doc) => pred.run(new Fields(doc));
 
     const expected_docs = docs.filter(fn);
     expect(expected_docs).to.have.length.above(0);
 
-    cur.toArray((error, docs) => {
-        if (error) { throw error; }
+    cur.toArray()
+        .then((docs) => {
+            expect(docs).to.have.lengthOf(expected_docs.length);
 
-        expect(docs).to.have.lengthOf(expected_docs.length);
+            for (let doc of docs) {
+                delete doc._id;
 
-        for (let doc of docs) {
-            delete doc._id;
+                expect(expected_docs).to.deep.include(doc);
+            }
 
-            expect(expected_docs).to.deep.include(doc);
-        }
-
-        done();
-    });
+            done();
+        })
+        .catch(done);
 };
 
 describe('equality (without $eq)', () => {
     it('should test for equality', (done) => {
-        waterfall([
-            next => query({ x: 4 }, next),
-            next => query({ x: undefined }, next),
-            next => query({ x: null }, next)
-        ], done);
+        waterfall(
+            [
+                (next) => query({ x: 4 }, next),
+                (next) => query({ x: undefined }, next),
+                (next) => query({ x: null }, next),
+            ],
+            done
+        );
     });
 });
 
@@ -77,15 +80,21 @@ describe('$and', () => {
 
 describe('$or', () => {
     it('should perform disjunction', (done) => {
-        waterfall([
-            next => query({ $or: [{ x: 2 }, { g: 3 }] }, next),
+        waterfall(
+            [
+                (next) => query({ $or: [{ x: 2 }, { g: 3 }] }, next),
 
-            (next) => {
-                query({
-                    $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }]
-                }, next);
-            }
-        ], done);
+                (next) => {
+                    query(
+                        {
+                            $or: [{ $or: [{ x: 2 }, { g: 3 }] }, { z: 8 }],
+                        },
+                        next
+                    );
+                },
+            ],
+            done
+        );
     });
 });
 

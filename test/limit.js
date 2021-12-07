@@ -16,17 +16,11 @@ before(() => col.insert(docs));
 after(() => db.drop());
 
 describe('Limit number of documents', () => {
-    it('should limit the number of documents', (done) => {
-        col.find()
+    it('should limit the number of documents', async () => {
+        let docs = await col
+            .find()
             .limit(2)
-            .toArray((error, docs) => {
-                if (error) {
-                    throw error;
-                }
-
-                expect(docs).to.have.lengthOf(2);
-
-                done();
-            });
+            .toArray();
+        expect(docs).to.have.lengthOf(2);
     });
 });

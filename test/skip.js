@@ -14,13 +14,8 @@ const docs = [
 before(() => col.insert(docs));
 after(() => db.drop());
 describe('Skip documents', () =>{
-    it('should skip a specified number of documents', (done) => {
-        col.find().skip(2).toArray((error, docs) => {
-            if (error) { throw error; }
-    
-            expect(docs).to.have.lengthOf(1);
-    
-            done();
-        });
+    it('should skip a specified number of documents', async () => {
+        let docs =  await col.find().skip(2).toArray();
+        expect(docs).to.have.lengthOf(1);
     });    
 });

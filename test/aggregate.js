@@ -22,15 +22,16 @@ describe('$match', () => {
         col.aggregate([
             { $match: { x: 4 } },
             { $match: { k: 2 } },
-            { $match: {} }
-        ]).toArray((error, docs) => {
-            if (error) { throw error; }
+            { $match: {} },
+        ])
+            .toArray()
+            .then((docs) => {
+                expect(docs).to.have.lengthOf(1);
 
-            expect(docs).to.have.lengthOf(1);
-
-            delete docs[0]._id;
-            expect(docs[0]).to.deep.equal({ x: 4, k: 2 });
-            done();
-        });
+                delete docs[0]._id;
+                expect(docs[0]).to.deep.equal({ x: 4, k: 2 });
+                done();
+            })
+            .catch(done);
     });
 });

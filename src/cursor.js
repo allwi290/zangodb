@@ -101,16 +101,16 @@ export class Cursor extends EventEmitter {
      * });
      */
     toArray(cb) {
-        const deferred = Q.defer();
-
-        this._toArray((error, docs) => {
-            if (error) { deferred.reject(error); }
-            else { deferred.resolve(docs); }
+        if (cb) {
+            throw new Error('Callbacks not supported, uses promises');
+        }
+        return new Promise((resolve, reject) => {
+            this._toArray((error, docs) => {
+                if (error) { return reject(error); }
+                else { return resolve(docs); }
+            });
+        
         });
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
     }
 
     _assertUnopened() {

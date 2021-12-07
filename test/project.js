@@ -22,16 +22,13 @@ after(() => db.drop());
 const project = (spec, expected_doc, done) => {
     const cur = col.find({}, spec);
 
-    cur.toArray((error, docs) => {
-        if (error) {
-            throw error;
-        }
-
-        expect(docs).to.have.lengthOf(1);
-        expect(docs[0]).to.deep.equal(expected_doc);
-
-        done();
-    });
+    cur.toArray()
+        .then((docs) => {
+            expect(docs).to.have.lengthOf(1);
+            expect(docs[0]).to.deep.equal(expected_doc);
+            done();
+        })
+        .catch(done);
 };
 
 describe('Inclusion and exclusion of fields', () => {

@@ -16,19 +16,11 @@ before(() => col.insert(docs));
 after(() => db.drop());
 
 describe('Delete documents', () => {
-    it('should delete documents', (done) => {
-        col.remove({ x: 4 }).then((affectedDocuments) => {
-            expect(affectedDocuments).to.equals(1);
-            col.find().toArray((error, docs) => {
-                if (error) {
-                    throw error;
-                }
-
-                expect(docs).to.have.lengthOf(2);
-                expect(docs).to.not.deep.include({ _id: 1, x: 4, k: 3 });
-
-                done();
-            });
-        }).catch(done);
+    it('should delete documents', async () => {
+        let affectedDocuments = await col.remove({ x: 4 });
+        let docs = await col.find().toArray();
+        expect(affectedDocuments).to.equals(1);
+        expect(docs).to.have.lengthOf(2);
+        expect(docs).to.not.deep.include({ _id: 1, x: 4, k: 3 });
     });
 });
