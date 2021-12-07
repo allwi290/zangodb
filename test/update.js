@@ -24,7 +24,10 @@ const update = (spec, expected_doc, done) => {
 
     col.insert(new_doc)
         .then(() => col.update({ _id }, spec))
-        .then(() => col.find({ _id }).toArray())
+        .then((affectedDocuments) => {
+            expect(affectedDocuments).equal(1);
+            return col.find({ _id }).toArray();
+        })
         .then((docs) => {
             expect(docs).to.have.lengthOf(1);
 
@@ -35,7 +38,7 @@ const update = (spec, expected_doc, done) => {
 
             done();
         })
-        .fail(done);
+        .catch(done);
 };
 
 

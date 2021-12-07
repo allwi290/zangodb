@@ -155,7 +155,7 @@ const build = (steps, field, value) => {
     }
 };
 
-export default (cur, spec, cb) => {
+export default (cur, spec) => {
     const steps = [];
 
     for (let field in spec) {
@@ -163,23 +163,32 @@ export default (cur, spec, cb) => {
     }
 
     if (!steps.length) {
-        return cb(null);
+        return Promise.resolve();
     }
+    return new Promise((resolve, reject) => {
+        (function iterate(affectedDocuments) {
+            cur._next((error, doc, idb_cur) => {
+                if (!doc) {
+                    if (error) {
+                        return reject(error);
+                    } else {
+                        return resolve(affectedDocuments);
+                    }
+                }
 
-    (function iterate() {
-        cur._next((error, doc, idb_cur) => {
-            if (!doc) {
-                return cb(error);
-            }
+                for (let fn of steps) {
+                    fn(doc);
+                }
 
-            for (let fn of steps) {
-                fn(doc);
-            }
+                const idb_req = idb_cur.update(doc);
 
-            const idb_req = idb_cur.update(doc);
-
-            idb_req.onsuccess = iterate;
-            idb_req.onerror = (e) => cb(getIDBError(e));
-        });
-    })();
+                idb_req.onsuccess = () => {
+                    return iterate(++affectedDocuments);
+                };
+                idb_req.onerror = (e) => {
+                    return reject(getIDBError(e));
+                };
+            });
+        })(0);
+    });
 };

@@ -17,11 +17,8 @@ after(() => db.drop());
 
 describe('Delete documents', () => {
     it('should delete documents', (done) => {
-        col.remove({ x: 4 }, (error) => {
-            if (error) {
-                throw error;
-            }
-
+        col.remove({ x: 4 }).then((affectedDocuments) => {
+            expect(affectedDocuments).to.equals(1);
             col.find().toArray((error, docs) => {
                 if (error) {
                     throw error;
@@ -32,6 +29,6 @@ describe('Delete documents', () => {
 
                 done();
             });
-        });
+        }).catch(done);
     });
 });

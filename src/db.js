@@ -1,6 +1,5 @@
 import EventEmitter from 'events';
 import memoize from 'memoizee';
-import Q from 'q';
 import { getIDBError } from './util.js';
 import { Collection } from './collection.js';
 
@@ -145,7 +144,7 @@ export default class Db extends EventEmitter {
         }
     }
 
-    _getConn(cb) {
+    #getConnection(cb) {
         let req;
 
         if (this._version) {
@@ -186,7 +185,7 @@ export default class Db extends EventEmitter {
     }
 
     _initGetConn() {
-        this._getConn = memoize(this._getConn, { async: true });
+        this._getConn = memoize(this.#getConnection, { async: true });
     }
 
     /**
@@ -209,23 +208,18 @@ export default class Db extends EventEmitter {
 
     /**
      * Open connection to the database.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      */
-    open(cb) {
-        const deferred = Q.defer();
-
-        this._getConn((error) => {
-            if (error) {
-                deferred.reject(error);
-            } else {
-                deferred.resolve(this);
-            }
+    open() {
+        return new Promise((resolve, reject) => {
+            this._getConn((error) => {
+                if (error) {
+                    return reject(error);
+                } else {
+                    return resolve(this);
+                }
+            });
         });
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
     }
 
     /**
@@ -241,25 +235,21 @@ export default class Db extends EventEmitter {
 
     /**
      * Delete the database, closing the connection if it is open.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      *
      * @example
-     * db.drop((error) => {
-     *     if (error) { throw error; }
-     * });
+     * await db.drop();
      */
-    drop(cb) {
+    drop() {
         this.close();
-
-        const deferred = Q.defer();
         const req = indexedDB.deleteDatabase(this._name);
-
-        req.onsuccess = () => deferred.resolve();
-        req.onerror = (e) => deferred.reject(getIDBError(e));
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
+        return new Promise((resolve, reject) => {
+            req.onsuccess = () => {
+                return resolve();
+            };
+            req.onerror = (e) => {
+                return reject(getIDBError(e));
+            };
+        });
     }
 }

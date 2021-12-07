@@ -1,4 +1,3 @@
-import Q from 'q';
 import { getIDBError } from './util.js';
 import { Cursor } from './cursor.js';
 import { aggregate } from './aggregate.js';
@@ -50,32 +49,22 @@ export class Collection {
      * Retrieve one document that satisfies the specified query criteria.
      * @param {object} [expr] The query document to filter by.
      * @param {object} [projection_spec] Specification for projection.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      *
      * @example
      * col.findOne({ x: 4, g: { $lt: 10 } }, { k: 0 });
      */
-    findOne(expr, projection_spec, cb) {
-        if (typeof projection_spec === 'function') {
-            cb = projection_spec;
-            projection_spec = null;
-        }
-
-        const deferred = Q.defer();
+    findOne(expr, projection_spec) {
         const cur = this.find(expr, projection_spec).limit(1);
-
-        cur.toArray((error, docs) => {
-            if (error) {
-                deferred.reject(error);
-            } else {
-                deferred.resolve(docs[0]);
-            }
+        return new Promise((resolve, reject) => {
+            cur.toArray((error, docs) => {
+                if (error) {
+                    return reject(error);
+                } else {
+                    return resolve(docs[0]);
+                }
+            });
         });
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
     }
 
     /**
@@ -127,112 +116,97 @@ export class Collection {
      *     if (error) { throw error; }
      * });
      */
-    insert(docs, cb) {
+    insert(docs) {
         if (!Array.isArray(docs)) {
             docs = [docs];
         }
 
-        const deferred = Q.defer();
+        return new Promise((resolve, reject) => {
+            this._db._getConn((error, idb) => {
+                let trans;
 
-        this._db._getConn((error, idb) => {
-            let trans;
-
-            const name = this._name;
-
-            try {
-                trans = idb.transaction([name], 'readwrite');
-            } catch (error) {
-                return deferred.reject(error);
-            }
-
-            trans.oncomplete = () => deferred.resolve();
-            trans.onerror = (e) => deferred.reject(getIDBError(e));
-
-            const store = trans.objectStore(name);
-
-            let i = 0;
-
-            const iterate = () => {
-                const doc = docs[i];
+                const name = this._name;
 
                 try {
-                    this._validate(doc);
+                    trans = idb.transaction([name], 'readwrite');
                 } catch (error) {
-                    return deferred.reject(error);
+                    return reject(error);
                 }
 
-                const req = store.add(doc);
-
-                req.onsuccess = () => {
-                    i++;
-
-                    if (i < docs.length) {
-                        iterate();
-                    }
+                trans.oncomplete = () => {
+                    return resolve();
                 };
-            };
+                trans.onerror = (e) => {
+                    return reject(getIDBError(e));
+                };
 
-            iterate();
+                const store = trans.objectStore(name);
+
+                let i = 0;
+
+                const iterate = () => {
+                    const doc = docs[i];
+
+                    try {
+                        this._validate(doc);
+                    } catch (error) {
+                        return reject(error);
+                    }
+
+                    const req = store.add(doc);
+
+                    req.onsuccess = () => {
+                        i++;
+
+                        if (i < docs.length) {
+                            iterate();
+                        }
+                    };
+                };
+
+                iterate();
+            });
         });
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
     }
-
-    _modify(fn, expr, cb) {
-        const deferred = Q.defer();
+    /**
+     * Modify documents that match a filter
+     * @param {function} fn - Modification function
+     * @param {object} expr - The query document to filter by.
+     * @returns {Promise}
+     */
+    #modify(fn, expr) {
         const cur = new Cursor(this, 'readwrite');
-
         cur.filter(expr);
-
-        fn(cur, (error) => {
-            if (error) {
-                deferred.reject(error);
-            } else {
-                deferred.resolve();
-            }
-        });
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
+        return fn(cur);
     }
 
     /**
      * Update documents that match a filter.
      * @param {object} expr The query document to filter by.
      * @param {object} spec Specification for updating.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      *
      * @example
-     * col.update({
+     * await col.update({
      *     age: { $gte: 18 }
      * }, {
      *     adult: true
-     * }, (error) => {
-     *     if (error) { throw error; }
      * });
      */
-    update(expr, spec, cb) {
-        const fn = (cur, cb) => update(cur, spec, cb);
-
-        return this._modify(fn, expr, cb);
+    update(expr, spec) {
+        const fn = (cur) => update(cur, spec);
+        return this.#modify(fn, expr);
     }
 
     /**
      * Delete documents that match a filter.
      * @param {object} expr The query document to filter by.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      *
      * @example
-     * col.remove({ x: { $ne: 10 } }, (error) => {
-     *     if (error) { throw error; }
-     * });
+     * await col.remove({ x: { $ne: 10 } });
      */
-    remove(expr, cb) {
-        return this._modify(remove, expr, cb);
+    remove(expr) {
+        return this.#modify(remove, expr);
     }
 }
