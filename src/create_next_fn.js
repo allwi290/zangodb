@@ -218,52 +218,59 @@ const createGetIDBCurFn = (config) => {
     const getIDBReq = createGetIDBReqFn(config);
 
     const onIDBCur = (cb) => {
-        idb_req.onsuccess = (e) => {
-            idb_cur = e.target.result;
+        if (cb) {
+            throw new Error('Callback not supported');
+        }
+        return new Promise((resolve, reject) => {
+            idb_req.onsuccess = (e) => {
+                //idb_cur = e.target.result;
+                return resolve(e.target.result); //idb_cur
+            };
 
-            cb();
-        };
-
-        idb_req.onerror = (e) => cb(getIDBError(e));
+            idb_req.onerror = (e) => {
+                return reject(getIDBError(e));
+            };
+        });
     };
 
-    const progressCur = (cb) => {
-        onIDBCur(cb);
-        idb_cur.continue();
+    const progressCur = async (cb) => {
+        try {
+            let cursorPromise = onIDBCur();
+            idb_cur.continue();
+            idb_cur = await cursorPromise;
+            return cb(undefined, idb_cur);
+        } catch (error) {
+            return cb(error);
+        }
     };
 
     let getCur = (cb) => {
-        openConn(config, (error, store) => {
+        openConn(config, async (error, store) => {
             if (error) {
                 return cb(error);
             }
 
             idb_req = getIDBReq(store);
-
-            onIDBCur((error) => {
-                if (idb_cur) {
-                    getCur = progressCur;
-                }
-
-                cb(error);
-            });
+            try {
+                idb_cur = await onIDBCur();
+                getCur = progressCur;
+                return cb(undefined, idb_cur);   
+            } catch (error) {
+                return cb(error);
+            }
         });
     };
 
-    return (cb) => {
-        if (cb) {
-            throw new Error('Callback not supported');
-        }
+    return () => {
         return new Promise((resolve, reject) => {
-            getCur((error) => {
+            getCur((error, cursor) => {
                 if (error) {
                     return reject(error);
                 } else {
-                    return resolve(idb_cur);
+                    return resolve(cursor);
                 }
-            });    
+            });
         });
-        
     };
 };
 
