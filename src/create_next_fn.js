@@ -250,7 +250,21 @@ const createGetIDBCurFn = (config) => {
         });
     };
 
-    return (cb) => getCur((error) => cb(error, idb_cur));
+    return (cb) => {
+        if (cb) {
+            throw new Error('Callback not supported');
+        }
+        return new Promise((resolve, reject) => {
+            getCur((error) => {
+                if (error) {
+                    return reject(error);
+                } else {
+                    return resolve(idb_cur);
+                }
+            });    
+        });
+        
+    };
 };
 
 const addPipelineStages = ({ pipeline }, next) => {
@@ -327,14 +341,17 @@ const createParallelNextFn = (config) => {
 const createNextFn = (config) => {
     const getIDBCur = createGetIDBCurFn(config);
 
-    const next = (cb) => {
-        getIDBCur((error, idb_cur) => {
-            if (!idb_cur) {
-                cb(error);
+    const next = async (cb) => {
+        try {
+            let idb_cur = await getIDBCur();
+            if (idb_cur) {
+                return cb(undefined, idb_cur.value, idb_cur);
             } else {
-                cb(null, idb_cur.value, idb_cur);
+                cb();
             }
-        });
+        } catch (error) {
+            cb(error);
+        }
     };
 
     return next;
