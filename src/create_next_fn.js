@@ -18,22 +18,22 @@ const removeClause = ({ parent, index }) => {
     parent.args.splice(index, 1);
 };
 
-const openConn = ({ col, read_pref }, cb) => {
-    col._db._getConn((error, idb) => {
-        if (error) {
-            return cb(error);
-        }
-
-        const name = col._name;
-
-        try {
-            const trans = idb.transaction([name], read_pref);
-            trans.onerror = (e) => cb(getIDBError(e));
-
-            cb(null, trans.objectStore(name));
-        } catch (error) {
-            cb(error);
-        }
+const openConn = ({ col, read_pref }) => {
+    return new Promise((resolve, reject) => {
+        col._db._getConn((error, idb) => {
+            if (error) {
+                return reject(error);
+            }
+            const name = col._name;
+    
+            try {
+                const trans = idb.transaction([name], read_pref);
+                const objectStore = trans.objectStore(name);
+                return resolve(objectStore); 
+            } catch (error) {
+                return reject(error);
+            }
+        }); 
     });
 };
 
@@ -236,28 +236,19 @@ const createGetIDBCurFn = (config) => {
         return idb_cur;
     };
 
-    let getCur = () => {
-        return new Promise((resolve, reject) => {
-            openConn(config, async (error, store) => {
-                if (error) {
-                    return reject(error);
-                }
-    
-                idb_req = getIDBReq(store);
-                try {
-                    idb_cur = await onIDBCur();
-                    getCur = progressCur;
-                    return resolve(idb_cur);
-                } catch (error) {
-                    return reject(error);
-                }
-            });
-    
-        });
+    let getCur = async () => {
+        let store = await openConn(config);
+        idb_req = getIDBReq(store);
+        idb_cur = await onIDBCur();
+        return idb_cur;
     };
 
     return async () => {
-        return await getCur();
+        if (idb_cur) {
+            return await progressCur();
+        } else {
+            return await getCur();
+        }
     };
 };
 
