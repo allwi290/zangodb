@@ -1,5 +1,4 @@
 import EventEmitter from 'events';
-import Q from 'q';
 import createNextFn from './create_next_fn.js';
 import filter from './filter.js';
 import { project } from './project.js';
@@ -37,80 +36,60 @@ export class Cursor extends EventEmitter {
         this._next = this._init;
     }
 
-    _forEach(fn, cb) {
-        this._next((error, doc) => {
-            if (doc) {
-                fn(doc);
-
-                this.emit('data', doc);
-                this._forEach(fn, cb);
-            } else {
-                this.emit('end');
-
-                cb(error);
-            }
+    _forEach(fn) {
+        return new Promise((resolve, reject) => {
+            (function iterate(cursor) {
+                cursor._next((error, doc) => {
+                    if (error) {
+                        return reject(error);
+                    } else if (doc) {
+                        fn(doc);
+                        cursor.emit('data', doc);
+                        iterate(cursor);
+                    } else {
+                        cursor.emit('end');
+                        return resolve();
+                    }
+                });
+            })(this);
         });
     }
 
     /**
      * Iterate over each document and apply a function.
      * @param {function} [fn] The function to apply to each document.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      *
      * @example
-     * col.find().forEach((doc) => {
+     * await col.find().forEach((doc) => {
      *     console.log('doc:', doc);
-     * }, (error) => {
-     *     if (error) { throw error; }
      * });
      */
-    forEach(fn = () => { }, cb) {
-        const deferred = Q.defer();
-
-        this._forEach(fn, (error) => {
-            if (error) { deferred.reject(error); }
-            else { deferred.resolve(); }
-        });
-
-        deferred.promise.nodeify(cb);
-
-        return deferred.promise;
+    async forEach(fn = () => {}) {
+        return await this._forEach(fn);
     }
 
-    _toArray(cb) {
+    async _toArray() {
         const docs = [];
-
-        this._forEach((doc) => {
+        await this._forEach((doc) => {
             docs.push(doc);
-        }, error => cb(error, docs));
+        });
+        return docs;
     }
 
     /**
      * Collect all documents as an array.
-     * @param {function} [cb] The result callback.
      * @return {Promise}
      *
      * @example
-     * col.find().toArray((error, docs) => {
-     *     if (error) { throw error; }
+     * let docs = await col.find().toArray();
      *
-     *     for (let doc of docs) {
-     *         console.log('doc:', doc);
-     *     }
-     * });
+     * for (let doc of docs) {
+     *     console.log('doc:', doc);
+     * };
      */
-    toArray(cb) {
-        if (cb) {
-            throw new Error('Callbacks not supported, uses promises');
-        }
-        return new Promise((resolve, reject) => {
-            this._toArray((error, docs) => {
-                if (error) { return reject(error); }
-                else { return resolve(docs); }
-            });
-        
-        });
+    async toArray() {
+        return await this._toArray();
     }
 
     _assertUnopened() {
@@ -156,7 +135,9 @@ export class Cursor extends EventEmitter {
      * @example
      * col.find().filter({ x: 4 });
      */
-    filter(expr) { return this._addStage(filter, expr); }
+    filter(expr) {
+        return this._addStage(filter, expr);
+    }
 
     /**
      * Limit the number of documents that can be iterated.
@@ -166,7 +147,9 @@ export class Cursor extends EventEmitter {
      * @example
      * col.find().limit(10);
      */
-    limit(num) { return this._addStage(limit, num); }
+    limit(num) {
+        return this._addStage(limit, num);
+    }
 
     /**
      * Skip over a specified number of documents.
@@ -176,7 +159,9 @@ export class Cursor extends EventEmitter {
      * @example
      * col.find().skip(4);
      */
-    skip(num) { return this._addStage(skip, num); }
+    skip(num) {
+        return this._addStage(skip, num);
+    }
 
     /**
      * Add new fields, and include or exclude pre-existing fields.
@@ -186,7 +171,9 @@ export class Cursor extends EventEmitter {
      * @example
      * col.find().project({ _id: 0, x: 1, n: { $add: ['$k', 4] } });
      */
-    project(spec) { return this._addStage(project, spec); }
+    project(spec) {
+        return this._addStage(project, spec);
+    }
 
     /**
      * Group documents by an _id and optionally add computed fields.
@@ -200,7 +187,9 @@ export class Cursor extends EventEmitter {
      *     count: { $sum: 1 }
      * });
      */
-    group(spec) { return this._addStage(group, spec); }
+    group(spec) {
+        return this._addStage(group, spec);
+    }
 
     /**
      * Deconstruct an iterable and output a document for each element.
@@ -210,7 +199,9 @@ export class Cursor extends EventEmitter {
      * @example
      * col.find().unwind('$elements');
      */
-    unwind(path) { return this._addStage(unwind, path); }
+    unwind(path) {
+        return this._addStage(unwind, path);
+    }
 
     /**
      * Sort documents.
@@ -234,7 +225,9 @@ export class Cursor extends EventEmitter {
      * // If x is indexed, it will be used for sorting.
      * col.find().sort({ x: 1 }).hint('x');
      */
-    sort(spec) { return this._addStage(sort, spec); }
+    sort(spec) {
+        return this._addStage(sort, spec);
+    }
 
     _init(cb) {
         this._opened = true;
