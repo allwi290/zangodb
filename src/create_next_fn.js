@@ -217,13 +217,9 @@ const createGetIDBCurFn = (config) => {
 
     const getIDBReq = createGetIDBReqFn(config);
 
-    const onIDBCur = (cb) => {
-        if (cb) {
-            throw new Error('Callback not supported');
-        }
+    const onIDBCur = () => {
         return new Promise((resolve, reject) => {
             idb_req.onsuccess = (e) => {
-                //idb_cur = e.target.result;
                 return resolve(e.target.result); //idb_cur
             };
 
@@ -233,44 +229,35 @@ const createGetIDBCurFn = (config) => {
         });
     };
 
-    const progressCur = async (cb) => {
-        try {
-            let cursorPromise = onIDBCur();
-            idb_cur.continue();
-            idb_cur = await cursorPromise;
-            return cb(undefined, idb_cur);
-        } catch (error) {
-            return cb(error);
-        }
+    const progressCur = async () => {
+        let cursorPromise = onIDBCur();
+        idb_cur.continue();
+        idb_cur = await cursorPromise;
+        return idb_cur;
     };
 
-    let getCur = (cb) => {
-        openConn(config, async (error, store) => {
-            if (error) {
-                return cb(error);
-            }
-
-            idb_req = getIDBReq(store);
-            try {
-                idb_cur = await onIDBCur();
-                getCur = progressCur;
-                return cb(undefined, idb_cur);   
-            } catch (error) {
-                return cb(error);
-            }
-        });
-    };
-
-    return () => {
+    let getCur = () => {
         return new Promise((resolve, reject) => {
-            getCur((error, cursor) => {
+            openConn(config, async (error, store) => {
                 if (error) {
                     return reject(error);
-                } else {
-                    return resolve(cursor);
+                }
+    
+                idb_req = getIDBReq(store);
+                try {
+                    idb_cur = await onIDBCur();
+                    getCur = progressCur;
+                    return resolve(idb_cur);
+                } catch (error) {
+                    return reject(error);
                 }
             });
+    
         });
+    };
+
+    return async () => {
+        return await getCur();
     };
 };
 
