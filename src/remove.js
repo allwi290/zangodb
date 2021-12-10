@@ -3,7 +3,7 @@ import { getIDBError } from './util.js';
 export default (cur) => {
     return new Promise((resolve, reject) => {
         (function iterate(affectedDocuments) {
-            cur._next((error, doc, idb_cur) => {
+            cur.next((error, doc, idb_cur) => {
                 if (!doc) {
                     if (error) {
                         return reject(error);

@@ -27,19 +27,29 @@ import limit from './limit.js';
  */
 export class Cursor extends EventEmitter {
     /** <strong>Note:</strong> Do not instantiate directly. */
+    #nextFn;
+    #pipeline = [];
+    #col;
+    #read_pref;
+    #opened = false;
     constructor(col, read_pref) {
         super();
-
-        this._col = col;
-        this._read_pref = read_pref;
-        this._pipeline = [];
-        this._next = this._init;
+        this.#col = col;
+        this.#read_pref = read_pref;
     }
-
-    _forEach(fn) {
+    get read_pref() {
+        return this.#read_pref;
+    }
+    get col() {
+        return this.#col;
+    }
+    get pipeline(){
+        return this.#pipeline;
+    }
+    #forEach(fn) {
         return new Promise((resolve, reject) => {
             (function iterate(cursor) {
-                cursor._next((error, doc) => {
+                cursor.next((error, doc) => {
                     if (error) {
                         return reject(error);
                     } else if (doc) {
@@ -66,12 +76,12 @@ export class Cursor extends EventEmitter {
      * });
      */
     async forEach(fn = () => {}) {
-        return await this._forEach(fn);
+        return await this.#forEach(fn);
     }
 
-    async _toArray() {
+    async #toArray() {
         const docs = [];
-        await this._forEach((doc) => {
+        await this.#forEach((doc) => {
             docs.push(doc);
         });
         return docs;
@@ -89,11 +99,11 @@ export class Cursor extends EventEmitter {
      * };
      */
     async toArray() {
-        return await this._toArray();
+        return await this.#toArray();
     }
 
-    _assertUnopened() {
-        if (this._opened) {
+    #assertUnopened() {
+        if (this.#opened) {
             throw Error('cursor has already been opened');
         }
     }
@@ -109,9 +119,9 @@ export class Cursor extends EventEmitter {
      * col.find().hint('myindex');
      */
     hint(path) {
-        this._assertUnopened();
+        this.#assertUnopened();
 
-        if (!this._col._isIndexed(path)) {
+        if (!this.#col._isIndexed(path)) {
             throw Error(`index '${path}' does not exist`);
         }
 
@@ -120,9 +130,9 @@ export class Cursor extends EventEmitter {
         return this;
     }
 
-    _addStage(fn, arg) {
-        this._assertUnopened();
-        this._pipeline.push([fn, arg]);
+    #addStage(fn, arg) {
+        this.#assertUnopened();
+        this.#pipeline.push([fn, arg]);
 
         return this;
     }
@@ -136,7 +146,7 @@ export class Cursor extends EventEmitter {
      * col.find().filter({ x: 4 });
      */
     filter(expr) {
-        return this._addStage(filter, expr);
+        return this.#addStage(filter, expr);
     }
 
     /**
@@ -148,7 +158,7 @@ export class Cursor extends EventEmitter {
      * col.find().limit(10);
      */
     limit(num) {
-        return this._addStage(limit, num);
+        return this.#addStage(limit, num);
     }
 
     /**
@@ -160,7 +170,7 @@ export class Cursor extends EventEmitter {
      * col.find().skip(4);
      */
     skip(num) {
-        return this._addStage(skip, num);
+        return this.#addStage(skip, num);
     }
 
     /**
@@ -172,7 +182,7 @@ export class Cursor extends EventEmitter {
      * col.find().project({ _id: 0, x: 1, n: { $add: ['$k', 4] } });
      */
     project(spec) {
-        return this._addStage(project, spec);
+        return this.#addStage(project, spec);
     }
 
     /**
@@ -188,7 +198,7 @@ export class Cursor extends EventEmitter {
      * });
      */
     group(spec) {
-        return this._addStage(group, spec);
+        return this.#addStage(group, spec);
     }
 
     /**
@@ -200,7 +210,7 @@ export class Cursor extends EventEmitter {
      * col.find().unwind('$elements');
      */
     unwind(path) {
-        return this._addStage(unwind, path);
+        return this.#addStage(unwind, path);
     }
 
     /**
@@ -226,12 +236,13 @@ export class Cursor extends EventEmitter {
      * col.find().sort({ x: 1 }).hint('x');
      */
     sort(spec) {
-        return this._addStage(sort, spec);
+        return this.#addStage(sort, spec);
     }
-
-    _init(cb) {
-        this._opened = true;
-        this._next = createNextFn(this);
-        this._next(cb);
+    next(cb) {
+        if (!this.#opened) {
+            this.#opened = true;
+            this.#nextFn = createNextFn(this);
+        }
+        this.#nextFn(cb);
     }
 }

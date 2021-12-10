@@ -346,7 +346,7 @@ export default (cur) => {
     let pipeline;
 
     try {
-        pipeline = buildPredicates(cur._pipeline);
+        pipeline = buildPredicates(cur.pipeline);
     } catch (error) {
         return (cb) => cb(error);
     }
@@ -356,8 +356,8 @@ export default (cur) => {
     }
 
     const config = {
-        col: cur._col,
-        read_pref: cur._read_pref,
+        col: cur.col,
+        read_pref: cur.read_pref,
         hint: cur._hint,
         pipeline,
     };
