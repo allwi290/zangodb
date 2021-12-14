@@ -5,7 +5,7 @@ import objectHash from 'object-hash';
 export function toPathPieces(path) {
     return path.split('.');
 }
-function hasOwnProperty(object, property) {
+export function hasOwnProperty(object, property) {
     return Object.prototype.hasOwnProperty.call(object, property);
 }
 /**

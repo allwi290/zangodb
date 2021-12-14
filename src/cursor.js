@@ -43,26 +43,21 @@ export class Cursor extends EventEmitter {
     get col() {
         return this.#col;
     }
-    get pipeline(){
+    get pipeline() {
         return this.#pipeline;
     }
-    #forEach(fn) {
-        return new Promise((resolve, reject) => {
-            (function iterate(cursor) {
-                cursor.next((error, doc) => {
-                    if (error) {
-                        return reject(error);
-                    } else if (doc) {
-                        fn(doc);
-                        cursor.emit('data', doc);
-                        iterate(cursor);
-                    } else {
-                        cursor.emit('end');
-                        return resolve();
-                    }
-                });
-            })(this);
-        });
+    async #forEach(fn) {
+        return await (async function iterate(cursor) {
+            let idb_cur = await cursor.next();
+            if (idb_cur) {
+                let doc = idb_cur.value;
+                fn(doc);
+                cursor.emit('data', doc);
+                return await iterate(cursor);
+            } else {
+                return;
+            }
+        })(this);
     }
 
     /**
@@ -238,11 +233,11 @@ export class Cursor extends EventEmitter {
     sort(spec) {
         return this.#addStage(sort, spec);
     }
-    next(cb) {
+    async next() {
         if (!this.#opened) {
             this.#opened = true;
             this.#nextFn = createNextFn(this);
         }
-        this.#nextFn(cb);
+        return await this.#nextFn();
     }
 }

@@ -1,11 +1,11 @@
 export default (_next, num) => {
     let count = 0;
 
-    const next = (cb) => {
+    const next = async() => {
         if (count++ < num) {
-            _next(cb);
+            return await _next();
         } else {
-            cb();
+            return;
         }
     };
 

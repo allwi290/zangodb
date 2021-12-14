@@ -24,8 +24,7 @@ const update = (spec, expected_doc, done) => {
 
     col.insert(new_doc)
         .then(() => col.update({ _id }, spec))
-        .then((affectedDocuments) => {
-            expect(affectedDocuments).equal(1);
+        .then(() => {
             return col.find({ _id }).toArray();
         })
         .then((docs) => {

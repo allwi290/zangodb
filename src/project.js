@@ -1,4 +1,4 @@
-import { toPathPieces, set, remove2, copy } from './util.js';
+import { toPathPieces, set, remove2, copy, hasOwnProperty } from './util.js';
 import build from './lang/expression.js';
 import { Fields } from './lang/fields.js';
 
@@ -32,7 +32,7 @@ export const project = (_next, spec) => {
     const toBool = (path) => !!spec[path];
     let _id_bool = true;
 
-    if (Object.prototype.hasOwnProperty.call(spec, '_id')) {
+    if (hasOwnProperty(spec, '_id')) {
         _id_bool = toBool('_id');
 
         delete spec._id;
@@ -79,7 +79,7 @@ export const project = (_next, spec) => {
 
         if (_id_bool) {
             project = (doc, new_doc) => {
-                if (Object.prototype.hasOwnProperty.call(doc, '_id')) {
+                if (hasOwnProperty(doc, '_id')) {
                     new_doc._id = doc._id;
                 }
             };
@@ -104,20 +104,18 @@ export const project = (_next, spec) => {
         steps.push((doc) => project(doc, existing_fields));
     }
 
-    const next = (cb) => {
-        _next((error, doc) => {
-            if (!doc) {
-                return cb(error);
-            }
-
+    const next = async () => {
+        let idb_cur = await _next();
+        if (idb_cur) {
+            let doc = idb_cur.value;
             let new_doc = doc;
-
             for (let fn of steps) {
                 new_doc = fn(doc, new_doc);
             }
-
-            cb(null, new_doc);
-        });
+            return {value: new_doc};
+        } else {
+            return;
+        }
     };
 
     return next;

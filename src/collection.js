@@ -54,17 +54,10 @@ export class Collection {
      * @example
      * col.findOne({ x: 4, g: { $lt: 10 } }, { k: 0 });
      */
-    findOne(expr, projection_spec) {
+    async findOne(expr, projection_spec) {
         const cur = this.find(expr, projection_spec).limit(1);
-        return new Promise((resolve, reject) => {
-            cur.toArray((error, docs) => {
-                if (error) {
-                    return reject(error);
-                } else {
-                    return resolve(docs[0]);
-                }
-            });
-        });
+        let [doc] = await cur.toArray();
+        return doc;
     }
 
     /**

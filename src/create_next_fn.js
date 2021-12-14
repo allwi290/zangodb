@@ -293,26 +293,25 @@ const createParallelNextFn = (config) => {
 
     let currentNextFn = getNextFn();
 
-    const changeNextFn = (cb) => {
+    const changeNextFn = async () => {
         if ((currentNextFn = getNextFn())) {
-            next(cb);
+            return await next();
         } else {
-            cb();
+            return;
         }
     };
 
-    const next = (cb) => {
-        currentNextFn((error, doc, idb_cur) => {
-            if (error) {
-                cb(error);
-            } else if (!doc) {
-                changeNextFn(cb);
-            } else if (onDoc(doc)) {
-                cb(null, doc, idb_cur);
+    const next = async () => {
+        let idb_cur = await currentNextFn();
+        if (idb_cur) {
+            if (onDoc(idb_cur.value)) {
+                return idb_cur;
             } else {
-                next(cb);
+                return await next();
             }
-        });
+        } else {
+            return await changeNextFn();
+        }
     };
 
     const spec = config.sort_spec;
@@ -325,20 +324,9 @@ const createParallelNextFn = (config) => {
 
 const createNextFn = (config) => {
     const getIDBCur = createGetIDBCurFn(config);
-
-    const next = async (cb) => {
-        try {
-            let idb_cur = await getIDBCur();
-            if (idb_cur) {
-                return cb(undefined, idb_cur.value, idb_cur);
-            } else {
-                cb();
-            }
-        } catch (error) {
-            cb(error);
-        }
-    };
-
+    async function next() {
+        return await getIDBCur();// idb_cur.value, idb_cur
+    }
     return next;
 };
 

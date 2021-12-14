@@ -3,9 +3,12 @@ import { toPathPieces, get } from './util.js';
 export default (_next, path) => {
     const path_pieces = toPathPieces(path.substring(1)),
         elements = [],
-        fn = (cb) => cb(null, elements.pop());
+        fn = () => {
+            let returnValue = {value: elements.pop()};
+            return returnValue.value && returnValue;
+        };
 
-    const onDoc = (doc, cb) => {
+    const onDoc = async (doc) => {
         const old_length = elements.length;
 
         get(doc, path_pieces, (obj, field) => {
@@ -22,23 +25,22 @@ export default (_next, path) => {
         });
 
         if (old_length === elements.length) {
-            return next(cb);
+            return await next();
         }
 
-        fn(cb);
+        return fn();
     };
 
-    let next = (cb) => {
-        _next((error, doc) => {
-            if (error) {
-                cb(error);
-            } else if (doc) {
-                onDoc(doc, cb);
-            } else {
-                (next = fn)(cb);
-            }
-        });
+    let next = async () => {
+        let idb_cur = await _next();
+        if (idb_cur) {
+            return onDoc(idb_cur.value);
+        } else {
+            return (next = fn)();
+        }
     };
 
-    return (cb) => next(cb);
+    return async () => {
+        return await next();
+    };
 };

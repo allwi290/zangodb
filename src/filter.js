@@ -1,15 +1,18 @@
 import { Fields } from './lang/fields.js';
 
-export default (next, pred) => (cb) => {
-    (function iterate() {
-        next((error, doc, idb_cur) => {
-            if (!doc) {
-                cb(error);
-            } else if (pred.run(new Fields(doc))) {
-                cb(null, doc, idb_cur);
+export default (next, pred) => async () => {
+    async function iterate(next, pred) {
+        let idb_cur = await next();
+        if (idb_cur) {
+            let doc = idb_cur.value;
+            if (pred.run(new Fields(doc))) {
+                return idb_cur;
             } else {
-                iterate();
+                return await iterate(next, pred);
             }
-        });
-    })();
+        } else {
+            return;
+        }
+    }
+    return await iterate(next, pred);
 };

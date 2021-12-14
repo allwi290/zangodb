@@ -1,5 +1,5 @@
 import memoize from 'memoizee';
-import { unknownOp, hashify } from './util.js';
+import { unknownOp, hashify, hasOwnProperty } from './util.js';
 import build from './lang/expression.js';
 import { Fields } from './lang/fields.js';
 class Operator {
@@ -160,25 +160,18 @@ const runInEnd = (in_end, groups) => {
     }
 };
 
-const groupLoopFn = (next, in_end, groups, fn) => (cb) => {
-    const done = (error) => {
-        if (!error) {
+const groupLoopFn = (next, in_end, groups, fn) => async () => {
+    async function iterate() {
+        let idb_cur = await next();
+        if (idb_cur) {
+            fn(idb_cur.value);
+            return await iterate();
+        } else {
             runInEnd(in_end, groups);
+            return groups;
         }
-
-        cb(error, groups);
-    };
-
-    (function iterate() {
-        next((error, doc) => {
-            if (!doc) {
-                return done(error);
-            }
-
-            fn(doc);
-            iterate();
-        });
-    })();
+    }
+    return await iterate();
 };
 
 const createGroupByRefFn = (next, expr, steps) => {
@@ -245,16 +238,14 @@ const createGroupFn = (next, expr, steps) => {
         });
     }
 
-    return (cb) => {
-        next((error, doc) => {
-            if (doc) {
-                initGroupDoc();
+    return async () => {
+        let idb_cur = await next();
+        if (idb_cur) {
+            initGroupDoc();
 
-                runInEnd(in_end, groups);
-            }
-
-            cb(error, groups);
-        });
+            runInEnd(in_end, groups);
+        }
+        return groups;
     };
 };
 
@@ -319,7 +310,7 @@ const _build = (steps, field, value) => {
 };
 
 export default (_next, spec) => {
-    if (!Object.prototype.hasOwnProperty.call(spec, '_id')) {
+    if (!hasOwnProperty(spec, '_id')) {
         throw Error('the "_id" field is missing');
     }
 
@@ -340,15 +331,20 @@ export default (_next, spec) => {
 
     const group = createGroupFn(_next, expr, steps);
 
-    let next = (cb) => {
-        group((error, groups) => {
-            if (error) {
-                cb(error);
-            } else {
-                (next = (cb) => cb(null, groups.pop()))(cb);
+    let next = async () => {
+        let groups = await group();
+        next = () => {
+            let group = groups.pop();
+            let doc;
+            if (group) {
+                doc = { value: group };
             }
-        });
+            return doc;
+        };
+        return next();
     };
 
-    return (cb) => next(cb);
+    return async () => {
+        return await next();
+    };
 };

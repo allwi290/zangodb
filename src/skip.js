@@ -1,17 +1,18 @@
 export default (_next, num) => {
     let count = 0;
 
-    const next = (cb) => {
-        _next((error, doc) => {
-            if (!doc) {
-                cb(error);
-            } else if (++count > num) {
-                cb(null, doc);
+    const next = async () => {
+        let idb_cur = await _next();
+        if (idb_cur) {
+            if (++count > num) {
+                let doc = idb_cur.value;
+                return doc;
             } else {
-                next(cb);
+                return await next();
             }
-        });
+        } else {
+            Promise.reject(`To few documents, has only skipped ${count}, should skip ${num}`);
+        }
     };
-
     return next;
 };

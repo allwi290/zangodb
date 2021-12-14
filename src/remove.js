@@ -1,22 +1,26 @@
 import { getIDBError } from './util.js';
-
 export default (cur) => {
-    return new Promise((resolve, reject) => {
-        (function iterate(affectedDocuments) {
-            cur.next((error, doc, idb_cur) => {
-                if (!doc) {
-                    if (error) {
+    (async function iterate() {
+        function deleteResult(idb_req) {
+            return new Promise((resolve, reject) => {
+                idb_req.onsuccess = async () => {
+                    try {
+                        return resolve(await iterate());
+                    } catch (error) {
                         return reject(error);
-                    } else {
-                        return resolve(affectedDocuments);
                     }
-                }
-                const idb_req = idb_cur.delete();
-                idb_req.onsuccess = () => iterate(++affectedDocuments);
+                };
                 idb_req.onerror = (e) => {
                     return reject(getIDBError(e));
                 };
             });
-        })(0);
-    });
+        }        
+        let idb_cur = await cur.next();
+        if (idb_cur) {
+            const idb_req = idb_cur.delete();
+            return await deleteResult(idb_req);
+        } else {
+            return;
+        }
+    })();
 };

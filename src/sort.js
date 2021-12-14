@@ -1,4 +1,4 @@
-import { toPathPieces, isObject, equal } from './util.js';
+import { toPathPieces, isObject, equal, hasOwnProperty } from './util.js';
 
 const compare = (a, b, path_pieces, order) => {
     for (var i = 0; i < path_pieces.length - 1; i++) {
@@ -20,11 +20,11 @@ const compare = (a, b, path_pieces, order) => {
 
     const piece = path_pieces[i];
 
-    if (!Object.prototype.hasOwnProperty.call(a, piece)) {
-        if (!Object.prototype.hasOwnProperty.call(b, piece)) {
+    if (!hasOwnProperty(a, piece)) {
+        if (!hasOwnProperty(b, piece)) {
             return null;
         }
-    } else if (Object.prototype.hasOwnProperty.call(b, piece)) {
+    } else if (hasOwnProperty(b, piece)) {
         a = a[piece];
         b = b[piece];
 
@@ -47,7 +47,7 @@ export default (_next, spec) => {
 
     const sortFn = (a, b) => {
         for (var [path_pieces, order] of sorts) {
-            const result = compare(a, b, path_pieces, order);
+            const result = compare(a.value, b.value, path_pieces, order);
 
             if (result > 0 || result < 0) {
                 return result;
@@ -59,30 +59,28 @@ export default (_next, spec) => {
 
     let docs = [];
 
-    const fn = (cb) => cb(null, docs.pop());
-
-    let next = (cb) => {
-        const done = (error) => {
-            if (error) {
-                return cb(error);
-            }
-
-            docs = docs.sort(sortFn);
-
-            (next = fn)(cb);
-        };
-
-        (function iterate() {
-            _next((error, doc) => {
-                if (!doc) {
-                    return done(error);
-                }
-
-                docs.push(doc);
-                iterate();
-            });
-        })();
+    const fn = () => {
+        return docs.pop();
     };
 
-    return (cb) => next(cb);
+    let next = async () => {
+        const done = () => {
+            docs = docs.sort(sortFn);
+
+            return (next = fn)();
+        };
+
+        return await (async function iterate() {
+            let id_cur = await _next();
+            if (id_cur) {
+                docs.push({value: id_cur.value});
+                return await iterate();
+            } else {
+                return done();
+            }
+        })();
+    };
+    return async () => {
+        return await next();
+    };
 };

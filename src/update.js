@@ -155,7 +155,7 @@ const build = (steps, field, value) => {
     }
 };
 
-export default (cur, spec) => {
+export default async (cur, spec) => {
     const steps = [];
 
     for (let field in spec) {
@@ -163,32 +163,34 @@ export default (cur, spec) => {
     }
 
     if (!steps.length) {
-        return Promise.resolve();
+        return Promise.resolve(0);
     }
-    return new Promise((resolve, reject) => {
-        (function iterate(affectedDocuments) {
-            cur.next((error, doc, idb_cur) => {
-                if (!doc) {
-                    if (error) {
+    (async function iterate() {
+        function updateResult(idb_req) {
+            return new Promise((resolve, reject) => {
+                idb_req.onsuccess = async () => {
+                    try {
+                        return resolve(await iterate());
+                    } catch (error) {
                         return reject(error);
-                    } else {
-                        return resolve(affectedDocuments);
                     }
-                }
-
-                for (let fn of steps) {
-                    fn(doc);
-                }
-
-                const idb_req = idb_cur.update(doc);
-
-                idb_req.onsuccess = () => {
-                    return iterate(++affectedDocuments);
                 };
                 idb_req.onerror = (e) => {
                     return reject(getIDBError(e));
                 };
             });
-        })(0);
-    });
+        }
+
+        let idb_cur = await cur.next();
+        if (idb_cur) {
+            let doc = idb_cur.value;
+            for (let fn of steps) {
+                fn(doc);
+            }
+            const idb_req = idb_cur.update(doc);
+            return await updateResult(idb_req);
+        } else {
+            return;
+        }
+    })();
 };
