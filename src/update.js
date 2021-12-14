@@ -157,7 +157,16 @@ const build = (steps, field, value) => {
 
 export default async (cur, spec) => {
     const steps = [];
-
+    function updateResult(idb_req) {
+        return new Promise((resolve, reject) => {
+            idb_req.onsuccess = () => {
+                return resolve();
+            };
+            idb_req.onerror = (e) => {
+                return reject(getIDBError(e));
+            };
+        });
+    }
     for (let field in spec) {
         build(steps, field, spec[field]);
     }
@@ -165,32 +174,14 @@ export default async (cur, spec) => {
     if (!steps.length) {
         return Promise.resolve(0);
     }
-    (async function iterate() {
-        function updateResult(idb_req) {
-            return new Promise((resolve, reject) => {
-                idb_req.onsuccess = async () => {
-                    try {
-                        return resolve(await iterate());
-                    } catch (error) {
-                        return reject(error);
-                    }
-                };
-                idb_req.onerror = (e) => {
-                    return reject(getIDBError(e));
-                };
-            });
+    let idb_cur;
+    while ((idb_cur = await cur.next())) {
+        let doc = idb_cur.value;
+        for (let fn of steps) {
+            fn(doc);
         }
-
-        let idb_cur = await cur.next();
-        if (idb_cur) {
-            let doc = idb_cur.value;
-            for (let fn of steps) {
-                fn(doc);
-            }
-            const idb_req = idb_cur.update(doc);
-            return await updateResult(idb_req);
-        } else {
-            return;
-        }
-    })();
+        const idb_req = idb_cur.update(doc);
+        await updateResult(idb_req);   
+    }
+    return;
 };

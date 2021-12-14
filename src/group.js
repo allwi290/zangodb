@@ -161,17 +161,12 @@ const runInEnd = (in_end, groups) => {
 };
 
 const groupLoopFn = (next, in_end, groups, fn) => async () => {
-    async function iterate() {
-        let idb_cur = await next();
-        if (idb_cur) {
-            fn(idb_cur.value);
-            return await iterate();
-        } else {
-            runInEnd(in_end, groups);
-            return groups;
-        }
+    let idb_cur;
+    while ((idb_cur = await next())) {
+        fn(idb_cur.value);
     }
-    return await iterate();
+    runInEnd(in_end, groups);
+    return groups;
 };
 
 const createGroupByRefFn = (next, expr, steps) => {
@@ -313,7 +308,7 @@ export default (_next, spec) => {
     if (!hasOwnProperty(spec, '_id')) {
         throw Error('the "_id" field is missing');
     }
-
+    let groups;
     const expr = build(spec._id);
     const new_spec = Object.assign({}, spec);
 
@@ -331,20 +326,14 @@ export default (_next, spec) => {
 
     const group = createGroupFn(_next, expr, steps);
 
-    let next = async () => {
-        let groups = await group();
-        next = () => {
-            let group = groups.pop();
-            let doc;
-            if (group) {
-                doc = { value: group };
-            }
-            return doc;
-        };
-        return next();
-    };
-
     return async () => {
-        return await next();
+        if (!groups) {
+            groups = await group();
+        }
+        if (groups.length) {
+            return { value: groups.pop() };
+        } else {
+            return;
+        }
     };
 };

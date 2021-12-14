@@ -57,30 +57,17 @@ export default (_next, spec) => {
         return -order;
     };
 
-    let docs = [];
+    let docs;
 
-    const fn = () => {
-        return docs.pop();
-    };
-
-    let next = async () => {
-        const done = () => {
-            docs = docs.sort(sortFn);
-
-            return (next = fn)();
-        };
-
-        return await (async function iterate() {
-            let id_cur = await _next();
-            if (id_cur) {
-                docs.push({value: id_cur.value});
-                return await iterate();
-            } else {
-                return done();
-            }
-        })();
-    };
     return async () => {
-        return await next();
+        if (!docs){
+            docs = [];
+            let idb_cur;
+            while ((idb_cur = await _next())) {
+                docs.push({value: idb_cur.value});
+            }
+            docs = docs.sort(sortFn);
+        }
+        return docs.pop();
     };
 };

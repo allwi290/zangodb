@@ -47,17 +47,14 @@ export class Cursor extends EventEmitter {
         return this.#pipeline;
     }
     async #forEach(fn) {
-        return await (async function iterate(cursor) {
-            let idb_cur = await cursor.next();
-            if (idb_cur) {
-                let doc = idb_cur.value;
-                fn(doc);
-                cursor.emit('data', doc);
-                return await iterate(cursor);
-            } else {
-                return;
-            }
-        })(this);
+        let idb_cur;
+        while ((idb_cur = await this.next())) {
+            let doc = idb_cur.value;
+            fn(doc);
+            this.emit('data', doc);
+        }
+        this.emit('end');
+        return;
     }
 
     /**
