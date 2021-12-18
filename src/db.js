@@ -1,5 +1,4 @@
 import EventEmitter from 'events';
-import memoize from 'memoizee';
 import { getIDBError } from './util.js';
 import { Collection } from './collection.js';
 
@@ -45,6 +44,8 @@ import { Collection } from './collection.js';
  * let db = new zango.Db('mydb', ['col1', 'col2']);
  */
 export default class Db extends EventEmitter {
+    #openingCallbacks = [];
+    #openingInProgress = false;
     constructor(name, version, config) {
         super();
 
@@ -58,7 +59,6 @@ export default class Db extends EventEmitter {
 
         this._cols = {};
         this._config = {};
-        this._initGetConn();
 
         if (Array.isArray(config)) {
             for (let name of config) {
@@ -144,9 +144,15 @@ export default class Db extends EventEmitter {
         }
     }
 
-    #getConnection(cb) {
+    _getConn(cb) {
         let req;
-
+        if (this._idb) {
+            return cb(null, this._idb);
+        } else if (this.#openingInProgress) {
+            return this.#openingCallbacks.push(cb);
+        }
+        this.#openingInProgress = true;
+        this.#openingCallbacks.push(cb);
         if (this._version) {
             req = indexedDB.open(this._name, this._version);
         } else {
@@ -159,8 +165,11 @@ export default class Db extends EventEmitter {
             this._idb = idb;
             this._version = idb.version;
             this._open = true;
-
-            cb(null, idb);
+            let cb;
+            while ((cb = this.#openingCallbacks.shift())) {
+                cb(null, idb);
+            }
+            
         };
 
         req.onerror = (e) => cb(getIDBError(e));
@@ -183,11 +192,6 @@ export default class Db extends EventEmitter {
 
         req.onblocked = () => this.emit('blocked');
     }
-
-    _initGetConn() {
-        this._getConn = memoize(this.#getConnection, { async: true });
-    }
-
     /**
      * Retrieve a {@link Collection} instance.
      * @param {string} name The name of the collection.
@@ -229,7 +233,6 @@ export default class Db extends EventEmitter {
         if (this._open) {
             this._idb.close();
             this._open = false;
-            this._initGetConn();
         }
     }
 
