@@ -109,57 +109,43 @@ export class Collection {
      *     if (error) { throw error; }
      * });
      */
-    insert(docs) {
+    async insert(docs) {
+        function transactionResult(transaction) {
+            return new Promise((resolve, reject) => {
+                transaction.oncomplete = () => {
+                    return resolve();
+                };
+                transaction.onerror = (e) => {
+                    return reject(getIDBError(e));
+                };
+            });
+        }
+        function requestResult(request) {
+            return new Promise((resolve, reject) => {
+                request.onsuccess = resolve;
+                request.onerror = reject;
+            });
+        }
         if (!Array.isArray(docs)) {
             docs = [docs];
         }
+        let idb = await this._db._getConn();
+        let trans;
 
-        return new Promise((resolve, reject) => {
-            this._db._getConn((error, idb) => {
-                let trans;
+        const name = this._name;
 
-                const name = this._name;
+        trans = idb.transaction([name], 'readwrite');
 
-                try {
-                    trans = idb.transaction([name], 'readwrite');
-                } catch (error) {
-                    return reject(error);
-                }
+        let transResult = transactionResult(trans);
 
-                trans.oncomplete = () => {
-                    return resolve();
-                };
-                trans.onerror = (e) => {
-                    return reject(getIDBError(e));
-                };
-
-                const store = trans.objectStore(name);
-
-                let i = 0;
-
-                const iterate = () => {
-                    const doc = docs[i];
-
-                    try {
-                        this._validate(doc);
-                    } catch (error) {
-                        return reject(error);
-                    }
-
-                    const req = store.add(doc);
-
-                    req.onsuccess = () => {
-                        i++;
-
-                        if (i < docs.length) {
-                            iterate();
-                        }
-                    };
-                };
-
-                iterate();
-            });
-        });
+        const store = trans.objectStore(name);
+        for (let index = 0; index < docs.length; index++) {
+            const doc = docs[index];
+            this._validate(doc);
+            const req = store.add(doc);
+            await requestResult(req);
+        }
+        return await transResult;
     }
     /**
      * Modify documents that match a filter

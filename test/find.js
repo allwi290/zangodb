@@ -159,7 +159,7 @@ describe('$nin', () => {
 });
 
 describe('$elemMatch', () => {
-    it('should test if any iterable elements satisify a predicate', (done) => {
+    it('should test if any iterable elements satisfy a predicate', (done) => {
         query({ x: { $elemMatch: { k: 8 } } }, done);
     });
 });

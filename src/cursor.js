@@ -108,7 +108,7 @@ export class Cursor extends EventEmitter {
      * @return {Cursor}
      *
      * @example
-     * col.find().hint('myindex');
+     * col.find().hint('myIndex');
      */
     hint(path) {
         this.#assertUnopened();

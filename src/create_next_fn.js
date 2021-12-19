@@ -18,23 +18,11 @@ const removeClause = ({ parent, index }) => {
     parent.args.splice(index, 1);
 };
 
-const openConn = ({ col, read_pref }) => {
-    return new Promise((resolve, reject) => {
-        col._db._getConn((error, idb) => {
-            if (error) {
-                return reject(error);
-            }
-            const name = col._name;
-    
-            try {
-                const trans = idb.transaction([name], read_pref);
-                const objectStore = trans.objectStore(name);
-                return resolve(objectStore); 
-            } catch (error) {
-                return reject(error);
-            }
-        }); 
-    });
+const openConn = async ({ col, read_pref }) => {
+    let idb  = await col._db._getConn();
+    const name = col._name;
+    const trans = idb.transaction([name], read_pref);
+    return trans.objectStore(name);
 };
 
 const getIDBReqWithIndex = (store, clause) => {
@@ -325,7 +313,7 @@ const createParallelNextFn = (config) => {
 const createNextFn = (config) => {
     const getIDBCur = createGetIDBCurFn(config);
     async function next() {
-        return await getIDBCur();// idb_cur.value, idb_cur
+        return await getIDBCur(); // idb_cur.value, idb_cur
     }
     return next;
 };

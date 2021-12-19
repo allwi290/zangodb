@@ -255,13 +255,13 @@ const ops = {
 
 const _build = (steps, field, value) => {
     const { in_start, in_iter, in_end } = steps;
-    const op_strs = Object.keys(value);
+    const op_strings = Object.keys(value);
 
-    if (op_strs.length > 1) {
+    if (op_strings.length > 1) {
         throw Error('fields must have only one operator');
     }
 
-    const op_str = op_strs[0],
+    const op_str = op_strings[0],
         Op = ops[op_str];
 
     if (!Op) {

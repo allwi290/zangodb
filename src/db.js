@@ -19,7 +19,7 @@ import { Collection } from './collection.js';
  * @param {object|string[]} config The collections configuration.
  *
  * @example
- * let db = new zango.Db('mydb', {
+ * let db = new zango.Db('myDb', {
  *     // Define collection.
  *     col1: {
  *         // Create index if it doesn't already exist.
@@ -41,11 +41,11 @@ import { Collection } from './collection.js';
  *
  * @example
  * // Define collections without indexes.
- * let db = new zango.Db('mydb', ['col1', 'col2']);
+ * let db = new zango.Db('myDb', ['col1', 'col2']);
  */
 export default class Db extends EventEmitter {
     #openingCallbacks = [];
-    #openingInProgress = false;
+    #openingRequest = undefined;
     constructor(name, version, config) {
         super();
 
@@ -143,54 +143,57 @@ export default class Db extends EventEmitter {
             }
         }
     }
-
-    _getConn(cb) {
-        let req;
-        if (this._idb) {
-            return cb(null, this._idb);
-        } else if (this.#openingInProgress) {
-            return this.#openingCallbacks.push(cb);
-        }
-        this.#openingInProgress = true;
-        this.#openingCallbacks.push(cb);
-        if (this._version) {
-            req = indexedDB.open(this._name, this._version);
-        } else {
-            req = indexedDB.open(this._name);
-        }
-
-        req.onsuccess = (e) => {
-            const idb = e.target.result;
-
-            this._idb = idb;
-            this._version = idb.version;
-            this._open = true;
-            let cb;
-            while ((cb = this.#openingCallbacks.shift())) {
-                cb(null, idb);
-            }
-            
-        };
-
-        req.onerror = (e) => cb(getIDBError(e));
-
-        req.onupgradeneeded = (e) => {
-            const idb = e.target.result;
-
-            for (let name in this._config) {
-                try {
-                    if (!this._config[name]) {
-                        idb.deleteObjectStore(name);
-                    } else if (!idb.objectStoreNames.contains(name)) {
-                        this._addStore(idb, name);
+    async #getConnectionResult(request) {
+        return new Promise((resolve, reject) => {
+            request.onsuccess = ({ target }) => {
+                const idb = target.result;
+                this._idb = idb;
+                this._version = idb.version;
+                this._open = true;
+                resolve(idb);
+            };
+            request.onerror = (e) => {
+                reject(getIDBError(e));
+            };
+            request.onupgradeneeded = ({ target }) => {
+                const idb = target.result;
+                for (let name in this._config) {
+                    try {
+                        if (!this._config[name]) {
+                            idb.deleteObjectStore(name);
+                        } else if (!idb.objectStoreNames.contains(name)) {
+                            this._addStore(idb, name);
+                        }
+                    } catch (error) {
+                        reject(error);
                     }
-                } catch (error) {
-                    return cb(error);
                 }
+            };
+            request.onblocked = (e) => {
+                this.emit('blocked');
+                reject(e);
+            };
+        });
+    }
+    async _getConn() {
+        if (this._idb) {
+            return Promise.resolve(this._idb);
+        }
+        if (this.#openingRequest === undefined) {
+            if (this._version) {
+                this.#openingRequest = indexedDB.open(
+                    this._name,
+                    this._version
+                );
+            } else {
+                this.#openingRequest = indexedDB.open(this._name);
             }
-        };
-
-        req.onblocked = () => this.emit('blocked');
+        }
+        return await this.#getConnectionResult(this.#openingRequest).finally(
+            () => {
+                this.#openingRequest = undefined;
+            }
+        );
     }
     /**
      * Retrieve a {@link Collection} instance.
@@ -214,16 +217,8 @@ export default class Db extends EventEmitter {
      * Open connection to the database.
      * @return {Promise}
      */
-    open() {
-        return new Promise((resolve, reject) => {
-            this._getConn((error) => {
-                if (error) {
-                    return reject(error);
-                } else {
-                    return resolve(this);
-                }
-            });
-        });
+    async open() {
+        return await this._getConn();
     }
 
     /**

@@ -373,7 +373,7 @@ describe('$elemMatch', () => {
         ).to.have.lengthOf(0);
     });
 
-    it('should test if any iterable elements satisify a predicate', () => {
+    it('should test if any iterable elements satisfy a predicate', () => {
         expect(
             evalExpr(
                 {
